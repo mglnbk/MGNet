@@ -1,0 +1,4 @@
+data/
+.RData
+.ipynb_checkpoints
+model/drug-molecule-generation-with-VAE/
