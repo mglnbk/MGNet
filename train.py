@@ -68,9 +68,11 @@ epochs = 100
 model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=1e-3),
               loss="binary_crossentropy",
               metrics=[
-    keras.metrics.Precision(name="precision"),
-    keras.metrics.Recall(name="recall"),
-    AUC()])
+                        keras.metrics.Precision(name="precision"),
+                        keras.metrics.Recall(name="recall"),
+                        AUC()
+                        ]
+            )
 
 
 model.fit(x=X_train, y=y_train, batch_size=batch_size, epochs=epochs,validation_split=.1)
