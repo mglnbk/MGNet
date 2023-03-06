@@ -9,6 +9,7 @@ from keras import layers
 import numpy as np
 from tensorflow.data import Dataset
 from sklearn.preprocessing import MinMaxScaler
+import datetime
 from sklearn.model_selection import train_test_split
 
 data = np.load('./data/processed_data/all_feature.npy')
@@ -61,8 +62,12 @@ model = keras.Sequential(
     ]
 )
 
-batch_size = 256
-epochs = 100
+batch_size = 32
+epochs = 50
+# 64 100 0.85
+
+log_dir = "logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
 
 
 model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=1e-3),
@@ -75,7 +80,8 @@ model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=1e-3),
             )
 
 
-model.fit(x=X_train, y=y_train, batch_size=batch_size, epochs=epochs,validation_split=.1)
+model.fit(x=X_train, y=y_train, batch_size=batch_size, epochs=epochs,validation_split=.1
+          ,callbacks=[tensorboard_callback])
 
     
 
