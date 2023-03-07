@@ -1,4 +1,4 @@
-import pandas as pd
+import numpy as np
 from os.path import join, realpath
 import tensorflow as tf
 import pandas as pd
@@ -74,22 +74,30 @@ class Dataset:
     # This class will facilitate the creation of Dataset
     def __init__(self, feature_contained = ['cnv', 'gene_expression']):
         self.feature_contained = feature_contained
+        self.omics_data = {}
+
+        # load multi-omics data
         if "cnv" in feature_contained:
-            self.cnv = load_data_cna(RAW_CNV_GDSC_PATH, data_source="GDSC")
+            self.cnv = load_data_cna(RAW_CNV_GDSC_PATH, "GDSC")
+            self.omics_data['cnv'] = self.cnv
         if "gene_expression" in feature_contained:
-            self.fpkm = load_data_fpkm(RAW_FPKM_GDSC_PATH, data_source="GDSC")
+            self.fpkm = load_data_fpkm(RAW_FPKM_GDSC_PATH, "GDSC")
         if "methylation" in feature_contained:
             self.methylation = None
         if "snv" in feature_contained:
             self.snv = None
-        self.drug_df = load_data_pubchemid(RAW_PUBCHEMID_GDSC_PATH, "GDSC")
-        self.celline = load_data_celline(RAW_CELLINE_GDSC_PATH, data_source="GDSC")
-        self.experiment = load_data_experiment(RAW_EXPERIMENT_GDSC_PATH, data_source="GDSC")
         
-        self.pubchemid = load_data_pubchemid(RAW_PUBCHEMID_GDSC_PATH, "GDSC")
+        # load drug_df, celline and experiment
+        self.drug_df = load_data_pubchemid(RAW_PUBCHEMID_GDSC_PATH, "GDSC")
+        self.celline = load_data_celline(RAW_CELLINE_GDSC_PATH, "GDSC")
+        self.experiment = load_data_experiment(RAW_EXPERIMENT_GDSC_PATH, "GDSC")
+        
+        # First to preprocess experiment data matrix !
         self.celline_barcode = self.get_celline_barcode()
         self.processed_experiment = self.preprocess_experiment()
-        self.processed_fpkm, self.processed_cnv = self.preprocess_omics()
+
+        # Then preprocess omics data and response
+        self.omics_data = self.preprocess_omics()
         self.response = self.prepare_response()
 
     def preprocess_experiment(self):
@@ -100,8 +108,9 @@ class Dataset:
 
         # Add SMILES
         import pubchempy as pcp
-        df = pcp.get_properties(properties=['canonical_smiles'], identifier=list(all_experiment['pubchem']),
-                        namespace='cid', )
+        df = pcp.get_properties(properties=['canonical_smiles'], 
+                                identifier=list(self.drug_df['pubchem']),
+                                namespace='cid', )
         df = pd.DataFrame(df)
         df[['CID']]=df[['CID']].astype(str)
         lookup_table_cid_smiles = dict(zip(df['CID'], df['CanonicalSMILES']))
@@ -129,9 +138,16 @@ class Dataset:
         return all_experiment
 
     def preprocess_omics(self):
-        all_fpkm = self.fpkm.loc[self.celline_barcode]
-        all_cnv = self.cnv.loc[self.celline_barcode]
-        return (all_fpkm, all_cnv)
+        s = {}
+        if 'gene_expression' in self.feature_contained:
+            s['gene_expression'] = self.fpkm.loc[self.celline_barcode]
+        if 'cnv' in self.feature_contained:
+            s['cnv'] = self.cnv.loc[self.celline_barcode]
+        if 'snv' in self.feature_contained:
+            pass
+        if 'methylation' in self.feature_contained:
+            pass
+        return s
 
     def prepare_response(self) -> pd.DataFrame:
         response = pd.DataFrame()
@@ -165,25 +181,25 @@ class Dataset:
         print(self.processed_experiment.columns)
         if "cnv" in self.feature_contained:
             print("Copy Number Variation: ")
-            print(self.processed_cnv.shape)
-            print(self.processed_cnv.columns)
+            print(self.omics_data['cnv'].shape)
+            print(self.omics_data['cnv'].columns)
         if "gene_expression" in self.feature_contained:
             print("Gene Expression FPKM: ")
-            print(self.processed_fpkm.shape)
-            print(self.processed_fpkm.columns)
+            print(self.omics_data['gene_expression'].shape)
+            print(self.omics_data['gene_expression'].columns)
 
-    def split_training_test_validation(self, test_size=0.1, 
-                                       validation_size=0.1, scale=True):
-        model_selection.train_test_split()
+    def return_raw_data(self, scale = True) -> dict:
+        return 
 
-    def return_raw_data(self, scale = True):
-        pass
-
-    def prepare_tf_dataset(self, split=None):
-        features = tf.constant(self._data.values)
-        labels = tf.constant(self.response.values)
-        return tf.data.Dataset.from_tensor_slices((features, labels))
+    def return_data(self) -> dict:
+        return {
+            "omics_data": self.omics_data,
+            "response": self.response,
+            "experiment": self.processed_experiment
+        }
     
 if __name__ == "__main__":
     d = Dataset()
     d.statistics_and_describe()
+    s=d.return_data()
+    print(s['experiment'].columns)

@@ -35,19 +35,6 @@ labels = np.array(y)
 X_train, X_test, y_train, y_test = train_test_split(data, labels, test_size=0.1, 
                                                     random_state=40)
 
-# DATASET_SIZE = int(dataset.__len__())
-
-# train_size = int(0.7 * DATASET_SIZE)
-# val_size = int(0.15 * DATASET_SIZE)
-# test_size = int(0.15 * DATASET_SIZE)
-
-# # dataset = dataset.shuffle()
-# train_dataset = dataset.take(train_size)
-# test_dataset = dataset.skip(train_size)
-# val_dataset = test_dataset.skip(val_size)
-# test_dataset = test_dataset.take(test_size)
-
-
 
 input_shape = (1301,)
 
