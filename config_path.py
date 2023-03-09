@@ -5,7 +5,7 @@ from os.path import join, realpath
 # data_path definition
 
 RAW_FPKM_GDSC_PATH = realpath("data/raw_data/cellines_rnaseq_all_20220624/rnaseq_fpkm_20220624.csv")
-RAW_CNV_GDSC_PATH = realpath("data/raw_data/celline_SNP6_cnv_gistics_20191101/cnv_gistic_20191101.csv")
+RAW_CNV_GDSC_PATH = realpath("data/raw_data/celline_SNP6_cnv_gistics_20191101/cnv_abs_copy_number_picnic_20191101.csv")
 RAW_EXPERIMENT_GDSC_PATH = realpath("data/raw_data/GDSC2_drug_dose_cellines_IC50s.xlsx")
 RAW_METHYLATION_GDSC_PATH = realpath("data/raw_data/mutations_all_20230202.csv")
 RAW_COMPOUND_GDSC_PATH = realpath("data/raw_data/all_compounds_screened.csv")

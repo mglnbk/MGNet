@@ -11,15 +11,6 @@ from config_path import *
 
 # 注：min-Max归一化需要在分割完训练集和测试集和Validation set之后再进行
 
-# Cached_data
-cached_data = {}
-
-# Path Define
-cna_path = realpath("../../processed_data/cna.csv")
-experiment_path = realpath("../../processed_data/experiment.csv")
-fpkm_path = realpath("../../processed_data/fpkm.csv")
-SMILES_path = realpath("../../processed_data/pubchem_id-SMILES.csv")
-
 def load_data_cna(data_path, data_source) -> pd.DataFrame:
     if data_source == "GDSC":
         all_cna = pd.read_csv(data_path, low_memory=False,
@@ -74,12 +65,10 @@ class Dataset:
     # This class will facilitate the creation of Dataset
     def __init__(self, feature_contained = ['cnv', 'gene_expression']):
         self.feature_contained = feature_contained
-        self.omics_data = {}
 
         # load multi-omics data
         if "cnv" in feature_contained:
             self.cnv = load_data_cna(RAW_CNV_GDSC_PATH, "GDSC")
-            self.omics_data['cnv'] = self.cnv
         if "gene_expression" in feature_contained:
             self.fpkm = load_data_fpkm(RAW_FPKM_GDSC_PATH, "GDSC")
         if "methylation" in feature_contained:
