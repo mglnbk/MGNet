@@ -48,7 +48,6 @@ model = keras.Sequential(
         layers.Dense(1, activation='sigmoid'),
     ]
 )
-
 batch_size = 32
 epochs = 50
 # 64 100 0.85

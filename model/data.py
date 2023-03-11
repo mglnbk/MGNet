@@ -56,6 +56,15 @@ def load_data_pubchemid(data_path, data_source) -> pd.DataFrame:
         drug_df = drug_df[drug_df['pubchem'].isin(pubchem_id)]
     return drug_df    
 
+def load_data_methylation(data_path, data_source) -> pd.DataFrame:
+    if data_source == "GDSC":
+        met_df = pd.read_csv(data_path, sep = '\t', index_col=0)
+        temp = pd.read_excel(RAW_SENTRIX2SAMPLE_GDSC_PATH, sheet_name=0)
+        temp['Sentrix_Barcode'] = list("_".join([i,j]) for i, j in zip(temp['Sentrix_ID'].astype(str), temp['Sentrix_Position']))
+        tb = dict(zip(temp['Sentrix_Barcode'], temp['Sample_Name']))
+        met_df.rename(columns=tb, inplace=True)
+    return met_df.T
+
 class Dataset:
     """DatasetClass
 
@@ -72,7 +81,7 @@ class Dataset:
         if "gene_expression" in feature_contained:
             self.fpkm = load_data_fpkm(RAW_FPKM_GDSC_PATH, "GDSC")
         if "methylation" in feature_contained:
-            self.methylation = None
+            self.methylation = load_data_methylation(RAW_METHYLATION_GDSC_PATH, "GDSC")
         if "snv" in feature_contained:
             self.snv = None
         
@@ -135,7 +144,7 @@ class Dataset:
         if 'snv' in self.feature_contained:
             pass
         if 'methylation' in self.feature_contained:
-            pass
+            s['methylation'] = self.methylation.loc[self.celline_barcode]
         return s
 
     def prepare_response(self) -> pd.DataFrame:
@@ -158,9 +167,11 @@ class Dataset:
         s1 = set(self.experiment['CELL_LINE_NAME'])
         slist.append(set(filtered_celline['Sample Name']) )
         if "gene_expression" in self.feature_contained:
-            slist.append(set(self.fpkm.index) )
+            slist.append(set(self.fpkm.index))
         if "cnv" in self.feature_contained:
             slist.append(set(self.cnv.index))
+        if "methylation" in self.feature_contained:
+            slist.append(set(self.methylation.index))
         celline_barcode = list(s1.intersection(*slist))
         return celline_barcode
         
@@ -176,6 +187,10 @@ class Dataset:
             print("Gene Expression FPKM: ")
             print(self.omics_data['gene_expression'].shape)
             print(self.omics_data['gene_expression'].columns)
+        if "methylation" in self.feature_contained:
+            print("Methylation: ")
+            print(self.omics_data['methylation'].shape)
+            print(self.omics_data['methylation'].columns)
 
     def return_raw_data(self, scale = True) -> dict:
         return 
