@@ -19,3 +19,4 @@ Download URL Instruction
 - METH_CELL_DATA.txt.zip: https://www.cancerrxgene.org/gdsc1000/GDSC1000_WebResources//Data/preprocessed/methylation/METH_CELL_DATA.txt.zip
 - methSampleId_2_cosmicIds.xlsx: https://www.cancerrxgene.org/gdsc1000/GDSC1000_WebResources///Data/otherAnnotations/methSampleId_2_cosmicIds.xlsx
 - mutations_all_20230202.csv: https://cog.sanger.ac.uk/cmp/download/mutations_all_20230202.zip
+- model_list_2023_0306.csv: https://cog.sanger.ac.uk/cmp/download/model_list_20230306.csv

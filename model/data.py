@@ -1,5 +1,4 @@
 import numpy as np
-from os.path import join, realpath
 import tensorflow as tf
 import pandas as pd
 from tensorflow import keras
@@ -65,6 +64,19 @@ def load_data_methylation(data_path, data_source) -> pd.DataFrame:
         met_df.rename(columns=tb, inplace=True)
     return met_df.T
 
+def load_data_snv(data_path, data_source) -> pd.DataFrame:
+    if data_source == "GDSC":
+        snv_df = pd.read_csv(data_path, low_memory=False)
+        important_only = ['cds_disrupted','complex_sub','downstream', 'ess_splice','frameshift','missense','nonsense','silent','splice_region','start_lost','stop_lost','upstream']
+        snv_df = snv_df[snv_df['effect'].isin(important_only)]
+        df_table = pd.pivot_table(data=snv_df, 
+                                  index='model_name', 
+                                  columns='gene_symbol', 
+                                  values='effect',
+                                  aggfunc='count',
+                                  fill_value=0)
+    return df_table
+
 class Dataset:
     """DatasetClass
 
@@ -83,7 +95,7 @@ class Dataset:
         if "methylation" in feature_contained:
             self.methylation = load_data_methylation(RAW_METHYLATION_GDSC_PATH, "GDSC")
         if "snv" in feature_contained:
-            self.snv = None
+            self.snv = load_data_snv(RAW_SNV_GDSC_PATH, "GDSC")
         
         # load drug_df, celline and experiment
         self.drug_df = load_data_pubchemid(RAW_PUBCHEMID_GDSC_PATH, "GDSC")
@@ -142,7 +154,7 @@ class Dataset:
         if 'cnv' in self.feature_contained:
             s['cnv'] = self.cnv.loc[self.celline_barcode]
         if 'snv' in self.feature_contained:
-            pass
+            s['snv'] = self.snv.loc[self.celline_barcode]
         if 'methylation' in self.feature_contained:
             s['methylation'] = self.methylation.loc[self.celline_barcode]
         return s
@@ -172,6 +184,8 @@ class Dataset:
             slist.append(set(self.cnv.index))
         if "methylation" in self.feature_contained:
             slist.append(set(self.methylation.index))
+        if "snv" in self.feature_contained:
+            slist.append(set(self.snv.index))
         celline_barcode = list(s1.intersection(*slist))
         return celline_barcode
         
@@ -191,6 +205,10 @@ class Dataset:
             print("Methylation: ")
             print(self.omics_data['methylation'].shape)
             print(self.omics_data['methylation'].columns)
+        if "snv" in self.feature_contained:
+            print("Mutation: ")
+            print(self.omics_data['snv'].shape)
+            print(self.omics_data['snv'].columns) 
 
     def return_raw_data(self, scale = True) -> dict:
         return 

@@ -12,6 +12,7 @@ RAW_COMPOUND_GDSC_PATH = realpath("data/raw_data/all_compounds_screened.csv")
 RAW_CELLINE_GDSC_PATH = realpath("data/raw_data/all_cellines_screened.xlsx")
 RAW_PUBCHEMID_GDSC_PATH = realpath("data/raw_data/drug_info.csv")
 RAW_SENTRIX2SAMPLE_GDSC_PATH = realpath("data/raw_data/methSampleId_2_cosmicIds.xlsx")
+RAW_SNV_GDSC_PATH = realpath("data/raw_data/mutations_all_20230202.csv")
 
 # model parameters settings
 lr_rate = 1e-3
