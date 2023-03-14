@@ -14,6 +14,16 @@ RAW_PUBCHEMID_GDSC_PATH = realpath("data/raw_data/drug_info.csv")
 RAW_SENTRIX2SAMPLE_GDSC_PATH = realpath("data/raw_data/methSampleId_2_cosmicIds.xlsx")
 RAW_SNV_GDSC_PATH = realpath("data/raw_data/mutations_all_20230202.csv")
 
+PROCESSED_FPKM_GDSC_PATH = realpath("data/processed_data/fpkm.csv")
+PROCESSED_CNV_GDSC_PATH = realpath("data/processed_data/cnv.csv")
+PROCESSED_METHYLATION_GDSC_PATH = realpath("data/processed_data/methylation.csv")
+PROCESSED_SNV_GDSC_PATH = realpath("data/processed_data/snv.csv")
+
+R_SCRIPT_PATH = realpath("./SNF_integration.R")
+SIM_PATH = realpath("data/processed_data/simlilarity_matrix.csv")
+PUBCHEM_ID_SMILES_PATH = realpath("data/processed_data/pubchem_id-SMILES.csv")
+PRETRAINED_BETA_VAE_PATH = realpath("utils/drug-molecule-generation-with-VAE")
+
 # model parameters settings
 lr_rate = 1e-3
 dropout_rate = .5

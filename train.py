@@ -10,19 +10,17 @@ import numpy as np
 from tensorflow.data import Dataset
 from sklearn.preprocessing import MinMaxScaler
 import datetime
+from model.data import Dataset
 from sklearn.model_selection import train_test_split
 
-data = np.load('./data/processed_data/all_feature.npy')
-response = pd.read_csv('./data/processed_data/response.csv', sep='\t')
-#features = tf.constant(data)
+ds = Dataset(['cnv', 'gene_expression', 'snv', 'methylation'])
+response = ds.response
+data = ds.return_feature()
 labels = response['LN_IC50'].values
 scaler = MinMaxScaler()
 labels = labels.reshape(-1,1)
 scaler.fit(labels)
 labels = scaler.transform(labels)
-# labels = np.squeeze(1)
-#labels = tf.constant(labels)
-# dataset = Dataset.from_tensors((features, labels))
 
 y = []
 for i in labels:
@@ -35,8 +33,8 @@ labels = np.array(y)
 X_train, X_test, y_train, y_test = train_test_split(data, labels, test_size=0.1, 
                                                     random_state=40)
 
-
-input_shape = (1301,)
+# 435+810 = 1245
+input_shape = (1245,)
 
 model = keras.Sequential(
     [
@@ -45,11 +43,12 @@ model = keras.Sequential(
         layers.BatchNormalization(),
         layers.Dense(units=128, activation='relu'),
         layers.BatchNormalization(),
-        layers.Dense(1, activation='sigmoid'),
+        layers.Dropout(.5),
+        layers.Dense(1, activation='sigmoid')
     ]
 )
 batch_size = 32
-epochs = 50
+epochs = 100
 # 64 100 0.85
 
 log_dir = "logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -66,8 +65,13 @@ model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=1e-3),
             )
 
 
-model.fit(x=X_train, y=y_train, batch_size=batch_size, epochs=epochs,validation_split=.1
-          ,callbacks=[tensorboard_callback])
+model.fit(x=X_train, 
+          y=y_train, 
+          batch_size=batch_size, 
+          epochs=epochs,
+          validation_split=.1,
+          callbacks=[tensorboard_callback]
+          )
 
     
 
