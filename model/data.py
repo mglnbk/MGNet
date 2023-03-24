@@ -29,7 +29,7 @@ def load_data_celline(celline_data_path, data_source) -> pd.DataFrame:
         celline = pd.read_excel(celline_data_path, sheet_name=0)
     return celline
 
-def load_data_fpkm(data_path, data_source) -> pd.DataFrame:
+def load_data_fpkm(data_path) -> pd.DataFrame:
     all_fpkm = pd.read_csv(data_path, low_memory=False,
                     skiprows=lambda x: x in [0, 2, 3, 4])
     all_fpkm = all_fpkm.drop(columns=['model_name'])
@@ -58,25 +58,23 @@ def load_data_pubchemid(data_path, data_source) -> pd.DataFrame:
     return drug_df    
 
 def load_data_methylation(data_path, data_source) -> pd.DataFrame:
-    if data_source == "GDSC":
-        met_df = pd.read_csv(data_path, sep = '\t', index_col=0)
-        temp = pd.read_excel(RAW_SENTRIX2SAMPLE_GDSC_PATH, sheet_name=0)
-        temp['Sentrix_Barcode'] = list("_".join([i,j]) for i, j in zip(temp['Sentrix_ID'].astype(str), temp['Sentrix_Position']))
-        tb = dict(zip(temp['Sentrix_Barcode'], temp['Sample_Name']))
-        met_df.rename(columns=tb, inplace=True)
+    met_df = pd.read_csv(data_path, sep = '\t', index_col=0)
+    temp = pd.read_excel(RAW_SENTRIX2SAMPLE_GDSC_PATH, sheet_name=0)
+    temp['Sentrix_Barcode'] = list("_".join([i,j]) for i, j in zip(temp['Sentrix_ID'].astype(str), temp['Sentrix_Position']))
+    tb = dict(zip(temp['Sentrix_Barcode'], temp['Sample_Name']))
+    met_df.rename(columns=tb, inplace=True)
     return met_df.T
 
 def load_data_snv(data_path, data_source) -> pd.DataFrame:
-    if data_source == "GDSC":
-        snv_df = pd.read_csv(data_path, low_memory=False)
-        important_only = ['cds_disrupted','complex_sub','downstream', 'ess_splice','frameshift','missense','nonsense','silent','splice_region','start_lost','stop_lost','upstream']
-        snv_df = snv_df[snv_df['effect'].isin(important_only)]
-        df_table = pd.pivot_table(data=snv_df, 
-                                  index='model_name', 
-                                  columns='gene_symbol', 
-                                  values='effect',
-                                  aggfunc='count',
-                                  fill_value=0)
+    snv_df = pd.read_csv(data_path, low_memory=False)
+    important_only = ['cds_disrupted','complex_sub','downstream', 'ess_splice','frameshift','missense','nonsense','silent','splice_region','start_lost','stop_lost','upstream']
+    snv_df = snv_df[snv_df['effect'].isin(important_only)]
+    df_table = pd.pivot_table(data=snv_df, 
+                                index='model_name', 
+                                columns='gene_symbol', 
+                                values='effect',
+                                aggfunc='count',
+                                fill_value=0)
     return df_table
 
 class Dataset:
@@ -94,11 +92,11 @@ class Dataset:
         if "cnv" in feature_contained:
             self.cnv = load_data_cna(RAW_CNV_GDSC_PATH)
         if "gene_expression" in feature_contained:
-            self.fpkm = load_data_fpkm(RAW_FPKM_GDSC_PATH, "GDSC")
+            self.fpkm = load_data_fpkm(RAW_FPKM_GDSC_PATH)
         if "methylation" in feature_contained:
-            self.methylation = load_data_methylation(RAW_METHYLATION_GDSC_PATH, "GDSC")
+            self.methylation = load_data_methylation(RAW_METHYLATION_GDSC_PATH)
         if "snv" in feature_contained:
-            self.snv = load_data_snv(RAW_SNV_GDSC_PATH, "GDSC")
+            self.snv = load_data_snv(RAW_SNV_GDSC_PATH)
         
         # load drug_df, celline and experiment
         if self.dataset == "GDSC" or self.dataset == "all":
