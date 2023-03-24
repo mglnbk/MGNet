@@ -13,15 +13,15 @@ import subprocess
 
 # 注：min-Max归一化需要在分割完训练集和测试集和Validation set之后再进行
 
-def load_data_cna(data_path, data_source) -> pd.DataFrame:
-    if data_source == "GDSC":
-        all_cna = pd.read_csv(data_path, low_memory=False,
-                      skiprows=lambda x: x in [0, 2])
-        all_cna = all_cna.drop(columns=['model_name'])
-        all_cna.rename(columns={"Unnamed: 1": "celline_barcode"}, inplace=True)
-        all_cna.set_index('celline_barcode', inplace=True)
-        all_cna = all_cna.T
-        all_cna.fillna(0.0, inplace=True)
+def load_data_cna(data_path) -> pd.DataFrame:
+    all_cna = pd.read_csv(data_path, low_memory=False,
+                    skiprows=lambda x: x in [0, 2])
+    all_cna = all_cna.drop(columns=['model_name'])
+    all_cna.rename(columns={"Unnamed: 1": "celline_barcode"}, inplace=True)
+    all_cna.set_index('celline_barcode', inplace=True)
+    all_cna = all_cna.T
+    all_cna.fillna(0.0, inplace=True)
+    
     return all_cna
 
 def load_data_celline(celline_data_path, data_source) -> pd.DataFrame:
@@ -30,14 +30,13 @@ def load_data_celline(celline_data_path, data_source) -> pd.DataFrame:
     return celline
 
 def load_data_fpkm(data_path, data_source) -> pd.DataFrame:
-    if data_source == "GDSC":
-        all_fpkm = pd.read_csv(data_path, low_memory=False,
-                       skiprows=lambda x: x in [0, 2, 3, 4])
-        all_fpkm = all_fpkm.drop(columns=['model_name'])
-        all_fpkm.rename(columns={"Unnamed: 1": "celline_barcode"}, inplace=True)
-        all_fpkm.set_index('celline_barcode', inplace=True)
-        all_fpkm = all_fpkm.T
-        all_fpkm.fillna(0.0, inplace=True)
+    all_fpkm = pd.read_csv(data_path, low_memory=False,
+                    skiprows=lambda x: x in [0, 2, 3, 4])
+    all_fpkm = all_fpkm.drop(columns=['model_name'])
+    all_fpkm.rename(columns={"Unnamed: 1": "celline_barcode"}, inplace=True)
+    all_fpkm.set_index('celline_barcode', inplace=True)
+    all_fpkm = all_fpkm.T
+    all_fpkm.fillna(0.0, inplace=True)
     return all_fpkm
 
 def load_data_experiment(data_path, data_source) -> pd.DataFrame:
@@ -87,12 +86,13 @@ class Dataset:
         _type_: _description_
     """
     # This class will facilitate the creation of Dataset
-    def __init__(self, feature_contained = ['cnv', 'gene_expression']):
+    def __init__(self, feature_contained = ['cnv', 'gene_expression'], dataset = 'GDSC'):
         self.feature_contained = feature_contained
+        self.dataset = dataset
 
         # load multi-omics data
         if "cnv" in feature_contained:
-            self.cnv = load_data_cna(RAW_CNV_GDSC_PATH, "GDSC")
+            self.cnv = load_data_cna(RAW_CNV_GDSC_PATH)
         if "gene_expression" in feature_contained:
             self.fpkm = load_data_fpkm(RAW_FPKM_GDSC_PATH, "GDSC")
         if "methylation" in feature_contained:
@@ -101,7 +101,8 @@ class Dataset:
             self.snv = load_data_snv(RAW_SNV_GDSC_PATH, "GDSC")
         
         # load drug_df, celline and experiment
-        self.drug_df = load_data_pubchemid(RAW_PUBCHEMID_GDSC_PATH, "GDSC")
+        if self.dataset == "GDSC" or self.dataset == "all":
+            self.drug_df = load_data_pubchemid(RAW_PUBCHEMID_GDSC_PATH, "GDSC")
         self.celline = load_data_celline(RAW_CELLINE_GDSC_PATH, "GDSC")
         self.experiment = load_data_experiment(RAW_EXPERIMENT_GDSC_PATH, "GDSC")
         
@@ -145,7 +146,7 @@ class Dataset:
                         (all_experiment['LN_IC50'] > lower_limit.data)]
 
         all_experiment.reset_index(drop=True, inplace=True)
-        # 同时也要更新一下celline-barcode以防万一
+        # 同时也要更新一下celline-barcode
         self.celline_barcode = list(set(all_experiment['CELL_LINE_NAME']).intersection(self.celline_barcode))
 
 
@@ -172,16 +173,16 @@ class Dataset:
 
     def get_celline_barcode(self):
         # 寻找有数据的celline
-        filtered_celline = self.celline.loc[
-            (self.celline['Whole Exome Sequencing (WES)'] == "Y") &
-            (self.celline['Methylation'] == "Y") &
-            (self.celline['Gene Expression'] == "Y") &
-            (self.celline['Copy Number Alterations (CNA)'] == "Y") &
-            (self.celline['Drug\nResponse'] == "Y")
-        ]
+        # filtered_celline = self.celline.loc[
+        #     (self.celline['Whole Exome Sequencing (WES)'] == "Y") &
+        #     (self.celline['Methylation'] == "Y") &
+        #     (self.celline['Gene Expression'] == "Y") &
+        #     (self.celline['Copy Number Alterations (CNA)'] == "Y") &
+        #     (self.celline['Drug\nResponse'] == "Y")
+        # ]
         slist = []
         s1 = set(self.experiment['CELL_LINE_NAME'])
-        slist.append(set(filtered_celline['Sample Name']) )
+        # slist.append(set(filtered_celline['Sample Name']) )
         if "gene_expression" in self.feature_contained:
             slist.append(set(self.fpkm.index))
         if "cnv" in self.feature_contained:

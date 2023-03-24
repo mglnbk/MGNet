@@ -1,12 +1,6 @@
 import tensorflow as tf
 from tensorflow import keras
-import keras_tuner
-from sklearn import ensemble
-from sklearn import datasets
-from sklearn import linear_model
-from sklearn import metrics
-from sklearn import model_selection
-from keras.metrics import Accuracy, AUC
+from keras.metrics import Accuracy, AUC, AU
 from keras import layers
 import numpy as np
 from tensorflow.data import Dataset
@@ -26,7 +20,7 @@ labels = scaler.transform(labels)
 
 y = []
 for i in labels:
-    if (i[0]<=0.6):
+    if (i[0]<=0.5):
         y.append(1)
     else:
         y.append(0)
@@ -59,21 +53,24 @@ tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram
 
 model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=1e-3),
               loss="binary_crossentropy",
-              metrics=[
-                        keras.metrics.Precision(name="precision"),
-                        keras.metrics.Recall(name="recall"),
-                        AUC()
-                        ]
+              metrics=
+              [
+                keras.metrics.Precision(name="precision"),
+                keras.metrics.Recall(name="recall"),
+                AUC(),
+                Accuracy(),
+              ]
             )
 
 
-model.fit(x=X_train, 
-          y=y_train, 
-          batch_size=batch_size, 
-          epochs=epochs,
-          validation_split=.1,
-          callbacks=[tensorboard_callback]
-          )
+model.fit(
+    x=X_train, 
+    y=y_train, 
+    batch_size=batch_size, 
+    epochs=epochs,
+    validation_split=.1,
+    callbacks=[tensorboard_callback]
+    )
 
     
 
