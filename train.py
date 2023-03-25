@@ -29,12 +29,9 @@ labels = np.array(y)
 X_train, X_test, y_train, y_test = train_test_split(data, labels, test_size=0.1, 
                                                     random_state=40)
 
-# 435+810 = 1281
-input_shape = (1281,)
-
 model = keras.Sequential(
     [
-        keras.Input(shape=input_shape),
+        keras.Input(shape=(X_train.shape[1],)),
         layers.Dense(units=1024, activation='relu'),
         layers.BatchNormalization(),
         layers.Dense(units=128, activation='relu'),
