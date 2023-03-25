@@ -9,12 +9,18 @@ from config_path import PUBCHEM_ID_SMILES_PATH
 
 class Drug:
     def __init__(self) -> None:
+        
         df = pd.read_csv(RAW_DRUG_CTRP_PATH, 
-                         sep='\t', dtype=('str', 'str'))
+                         sep='\t', 
+                         dtype=('str', 'str')
+                         )
         df.dropna(inplace=True)
         df.reset_index(drop=True, inplace=True)
+
         df2 = pd.read_csv(RAW_DRUG_GDSC_PATH, 
-                          sep='\t', dtype=('str', 'str'))
+                          sep='\t', 
+                          dtype=('str', 'str')
+                          )
         df2.drop_duplicates(subset=['SYNONYMS'], keep='first', inplace=True)
         df2.dropna(inplace=True)
         df2.reset_index(drop=True, inplace=True)

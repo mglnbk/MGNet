@@ -30,3 +30,5 @@ From cell model passports
 Note that the genomic data and compound data from CTRPv2 and GDSC are all processed from the same data source, CCLE(Cell Model Passport) and GDSC1000
 
 As for the docs of single cell omics data, please read URL: https://depmap.sanger.ac.uk/documentation/datasets/
+
+As for the data contained in data/processed_data/drugs/*, they are processed from the public interface provided by PubChem(https://pubchem.ncbi.nlm.nih.gov/idexchange/idexchange.cgi)
