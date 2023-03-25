@@ -49,9 +49,9 @@ def smiles_to_graph(smiles):
     features = np.zeros((NUM_ATOMS, ATOM_DIM), "float32")
 
     # loop over each atom in molecule
-    # Ignore Pt Atom
+    # Ignore Pt and As Atom
     for atom in molecule.GetAtoms():
-        if(atom.GetSymbol() == "Pt"):
+        if(atom.GetSymbol() == "Pt" or "As"):
             continue
         i = atom.GetIdx()
         atom_type = atom_mapping[atom.GetSymbol()]
@@ -118,7 +118,7 @@ def get_drug_feature() -> pd.DataFrame:
     drug_AdjacencyTensor = []
     drug_FeatureTensor = []
 
-    df = pd.read_csv(PUBCHEM_ID_SMILES_PATH, sep='\t')
+    df = pd.read_csv(PUBCHEM_ID_SMILES_PATH)
     df.drop_duplicates(subset=['CID'], inplace=True)
 
     for i in df["CanonicalSMILES"]:
@@ -131,7 +131,7 @@ def get_drug_feature() -> pd.DataFrame:
 
     vae = load_model(PRETRAINED_BETA_VAE_PATH, compile=False)
 
-    z_mean, _ = vae.encoder.predict([drug_AdjacencyTensor[:1000], drug_FeatureTensor[:1000]])
+    z_mean, _ = vae.encoder.predict([drug_AdjacencyTensor[:], drug_FeatureTensor[:]])
     drug_feature_df = pd.DataFrame(data = z_mean, index=df['CID'])
 
     return drug_feature_df

@@ -1,6 +1,6 @@
 import tensorflow as tf
 from tensorflow import keras
-from keras.metrics import Accuracy, AUC, AU
+from keras.metrics import Accuracy, AUC
 from keras import layers
 import numpy as np
 from tensorflow.data import Dataset
@@ -29,8 +29,8 @@ labels = np.array(y)
 X_train, X_test, y_train, y_test = train_test_split(data, labels, test_size=0.1, 
                                                     random_state=40)
 
-# 435+810 = 1245
-input_shape = (1245,)
+# 435+810 = 1281
+input_shape = (1281,)
 
 model = keras.Sequential(
     [

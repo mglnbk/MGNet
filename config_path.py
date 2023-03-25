@@ -12,6 +12,10 @@ RAW_PUBCHEMID_GDSC_PATH = realpath("data/raw_data/drug_info.csv")
 RAW_SENTRIX2SAMPLE_GDSC_PATH = realpath("data/raw_data/methSampleId_2_cosmicIds.xlsx")
 RAW_SNV_GDSC_PATH = realpath("data/raw_data/mutations_all_20230202.csv")
 
+## DRUG DATA PATH
+RAW_DRUG_CTRP_PATH = realpath('data/processed_data/drugs/CTRP_SMILES2CIDS.txt')
+RAW_DRUG_GDSC_PATH = realpath('data/processed_data/drugs/GDSC_SYNS2CIDS.txt')
+
 ## PROCESSED_GDSC_PATH
 PROCESSED_FPKM_GDSC_PATH = realpath("data/processed_data/fpkm.csv")
 PROCESSED_CNV_GDSC_PATH = realpath("data/processed_data/cnv.csv")
@@ -21,7 +25,7 @@ PROCESSED_SNV_GDSC_PATH = realpath("data/processed_data/snv.csv")
 ## SCONDARY
 R_SCRIPT_PATH = realpath("./SNF_integration.R")
 SIM_PATH = realpath("data/processed_data/simlilarity_matrix.csv")
-PUBCHEM_ID_SMILES_PATH = realpath("data/processed_data/pubchem_id-SMILES.csv")
+PUBCHEM_ID_SMILES_PATH = realpath("data/processed_data/drugs/pubchem_id-SMILES.csv")
 PRETRAINED_BETA_VAE_PATH = realpath("utils/drug-molecule-generation-with-VAE")
 
 # model parameters settings
@@ -37,3 +41,8 @@ gene_feature_extractor = ['SNF', 'Transformer']
 # choose from ['Pretrained_beta-VAE', 'Pretrained_GCN'] 
 drug_feature_extractor = ['Pretrained_beta-VAE', 'Pretrained_GCN']
 
+
+if __name__ == '__main__':
+    import pandas as pd
+
+    print(pd.read_csv(PUBCHEM_ID_SMILES_PATH).columns)

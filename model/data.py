@@ -9,6 +9,7 @@ sys.path.append(realpath(path)) # Project root folder
 from config_path import *
 from model.beta_vae import *
 import subprocess
+from model.utils import Drug
 
 
 # 注：min-Max归一化需要在分割完训练集和测试集和Validation set之后再进行
@@ -44,20 +45,7 @@ def load_data_experiment(data_path, data_source) -> pd.DataFrame:
         df = pd.read_excel(data_path)
     return df
 
-def load_data_pubchemid(data_path, data_source) -> pd.DataFrame:
-    # 下面的过程是为了处理GDSC数据集中存在的一些药物不存在pubchem_id的情况
-    # 将这些条目去除
-    if data_source == "GDSC":
-        drug_df = pd.read_csv(data_path, sep=',')
-        import re
-        nonnumber = re.compile(r'\D+')
-        pubchem_id = list(set(drug_df['pubchem']))
-        pubchem_id = [i.split(',')[0] if "," in i else i for i in pubchem_id]
-        pubchem_id = [i for i in pubchem_id if re.findall(pattern=nonnumber, string=i).__len__()==0]
-        drug_df = drug_df[drug_df['pubchem'].isin(pubchem_id)]
-    return drug_df    
-
-def load_data_methylation(data_path, data_source) -> pd.DataFrame:
+def load_data_methylation(data_path) -> pd.DataFrame:
     met_df = pd.read_csv(data_path, sep = '\t', index_col=0)
     temp = pd.read_excel(RAW_SENTRIX2SAMPLE_GDSC_PATH, sheet_name=0)
     temp['Sentrix_Barcode'] = list("_".join([i,j]) for i, j in zip(temp['Sentrix_ID'].astype(str), temp['Sentrix_Position']))
@@ -65,7 +53,7 @@ def load_data_methylation(data_path, data_source) -> pd.DataFrame:
     met_df.rename(columns=tb, inplace=True)
     return met_df.T
 
-def load_data_snv(data_path, data_source) -> pd.DataFrame:
+def load_data_snv(data_path) -> pd.DataFrame:
     snv_df = pd.read_csv(data_path, low_memory=False)
     important_only = ['cds_disrupted','complex_sub','downstream', 'ess_splice','frameshift','missense','nonsense','silent','splice_region','start_lost','stop_lost','upstream']
     snv_df = snv_df[snv_df['effect'].isin(important_only)]
@@ -99,8 +87,10 @@ class Dataset:
             self.snv = load_data_snv(RAW_SNV_GDSC_PATH)
         
         # load drug_df, celline and experiment
-        if self.dataset == "GDSC" or self.dataset == "all":
-            self.drug_df = load_data_pubchemid(RAW_PUBCHEMID_GDSC_PATH, "GDSC")
+        # if self.dataset == "GDSC" or self.dataset == "all":
+        #     self.drug_df = load_data_pubchemid(RAW_PUBCHEMID_GDSC_PATH, "GDSC")
+
+        self.drug_info = Drug()
         self.celline = load_data_celline(RAW_CELLINE_GDSC_PATH, "GDSC")
         self.experiment = load_data_experiment(RAW_EXPERIMENT_GDSC_PATH, "GDSC")
         
@@ -114,21 +104,14 @@ class Dataset:
 
     def preprocess_experiment(self):
         # Experiment Preprocess, align with celline_barcode and search pubchem_id
-        all_experiment = self.experiment.join(self.drug_df.set_index('drug_name'), on='DRUG_NAME', how="inner")
-        all_experiment = all_experiment[all_experiment['CELL_LINE_NAME'].isin(self.celline_barcode)]
+        all_experiment = self.experiment[self.experiment['CELL_LINE_NAME'].isin(self.celline_barcode)]
         all_experiment.reset_index(drop=True, inplace = True)
 
-        # Add SMILES
-        import pubchempy as pcp
-        df = pcp.get_properties(properties=['canonical_smiles'], 
-                                identifier=list(self.drug_df['pubchem']),
-                                namespace='cid', )
-        df = pd.DataFrame(df)
-        df[['CID']]=df[['CID']].astype(str)
-        df.to_csv(PUBCHEM_ID_SMILES_PATH, sep='\t')
-        lookup_table_cid_smiles = dict(zip(df['CID'], df['CanonicalSMILES']))
-        all_experiment['SMILES']=[lookup_table_cid_smiles[i] for i in all_experiment['pubchem']]
-        sample_barcode = [f"{i[0]}_{i[1]}" for i in zip(all_experiment['CELL_LINE_NAME'], all_experiment['pubchem'])]
+        all_experiment = all_experiment.join(self.drug_info.gdsc_filter.set_index('SYNONYMS'), on='DRUG_NAME', how="inner")
+        all_experiment = all_experiment.join(self.drug_info.cid2smiles.set_index('CID'), on='CID', how='inner')
+        all_experiment.reset_index(drop=True, inplace=True)
+
+        sample_barcode = [f"{i[0]}_{i[1]}" for i in zip(all_experiment['CELL_LINE_NAME'], all_experiment['CID'])]
         all_experiment['SAMPLE_BARCODE'] = sample_barcode
         
         # exclude outliers
@@ -170,14 +153,6 @@ class Dataset:
         return response
 
     def get_celline_barcode(self):
-        # 寻找有数据的celline
-        # filtered_celline = self.celline.loc[
-        #     (self.celline['Whole Exome Sequencing (WES)'] == "Y") &
-        #     (self.celline['Methylation'] == "Y") &
-        #     (self.celline['Gene Expression'] == "Y") &
-        #     (self.celline['Copy Number Alterations (CNA)'] == "Y") &
-        #     (self.celline['Drug\nResponse'] == "Y")
-        # ]
         slist = []
         s1 = set(self.experiment['CELL_LINE_NAME'])
         # slist.append(set(filtered_celline['Sample Name']) )
@@ -213,9 +188,6 @@ class Dataset:
             print(self.omics_data['snv'].shape)
             print(self.omics_data['snv'].columns) 
 
-    def return_raw_data(self, scale = True) -> dict:
-        return 
-
     def return_data(self) -> dict:
         return {
             "omics_data": self.omics_data,
@@ -230,16 +202,16 @@ class Dataset:
         self.omics_data['snv'].to_csv(PROCESSED_SNV_GDSC_PATH)
 
         # Omics_data Filter - SNF
-        # if methods[0] == "SNF":
-        #     print("Do Omics Integration!")
-        #     subprocess.call([
-        #         'Rscript', 
-        #         R_SCRIPT_PATH,
-        #         PROCESSED_CNV_GDSC_PATH, 
-        #         PROCESSED_FPKM_GDSC_PATH, 
-        #         PROCESSED_SNV_GDSC_PATH,
-        #         PROCESSED_METHYLATION_GDSC_PATH]
-        #         )
+        if methods[0] == "SNF":
+            print("Do Omics Integration!")
+            subprocess.call([
+                'Rscript', 
+                R_SCRIPT_PATH,
+                PROCESSED_CNV_GDSC_PATH, 
+                PROCESSED_FPKM_GDSC_PATH, 
+                PROCESSED_SNV_GDSC_PATH,
+                PROCESSED_METHYLATION_GDSC_PATH]
+                )
         
         similarity_df = pd.read_csv(SIM_PATH)
         similarity_df.drop(columns=['Unnamed: 0'], inplace=True)
