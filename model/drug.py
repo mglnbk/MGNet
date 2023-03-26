@@ -142,25 +142,38 @@ def get_drug_feature() -> pd.DataFrame:
     return drug_feature_df
 
 
-def get_drug_feature() -> pd.DataFrame:
-
-    drug_AdjacencyTensor = []
-    drug_FeatureTensor = []
-
+def get_drug_feature(method) -> pd.DataFrame:
     df = pd.read_csv(PUBCHEM_ID_SMILES_PATH)
     df.drop_duplicates(subset=['CID'], inplace=True)
+    if method == "beta-VAE":
+        drug_AdjacencyTensor = []
+        drug_FeatureTensor = []
 
-    for i in df["CanonicalSMILES"]:
-        _ad, _fe = smiles_to_graph(i)
-        drug_AdjacencyTensor.append(_ad)
-        drug_FeatureTensor.append(_fe)
+        for i in df["CanonicalSMILES"]:
+            _ad, _fe = smiles_to_graph(i)
+            drug_AdjacencyTensor.append(_ad)
+            drug_FeatureTensor.append(_fe)
 
-    drug_AdjacencyTensor = np.array(drug_AdjacencyTensor)
-    drug_FeatureTensor = np.array(drug_FeatureTensor)
+        drug_AdjacencyTensor = np.array(drug_AdjacencyTensor)
+        drug_FeatureTensor = np.array(drug_FeatureTensor)
 
-    vae = load_model(PRETRAINED_BETA_VAE_PATH, compile=False)
+        vae = load_model(PRETRAINED_BETA_VAE_PATH, compile=False)
 
-    z_mean, _ = vae.encoder.predict([drug_AdjacencyTensor[:], drug_FeatureTensor[:]])
-    drug_feature_df = pd.DataFrame(data = z_mean, index=df['CID'])
+        z_mean, _ = vae.encoder.predict([drug_AdjacencyTensor[:], drug_FeatureTensor[:]])
+        drug_feature_df = pd.DataFrame(data = z_mean, index=df['CID'])
 
-    return drug_feature_df
+        return drug_feature_df
+    
+    elif method == "manual":
+        fingerprint = []
+        rdkit_2d_normalized = []
+        for i in df['CanonicalSMILES']:
+            fingerprint.append(smiles2pubchem(i))
+            rdkit_2d_normalized.append(smiles2rdkit2d(i))
+        fingerprint = np.array(fingerprint)
+        rdkit_2d_normalized = np.array(rdkit_2d_normalized)
+        drug_fingerprint_df = pd.DataFrame(data=fingerprint, index=df['CID'])
+        drug_rdkit_2d_normalized_df = pd.DataFrame(data=rdkit_2d_normalized, index=df['CID'])
+
+        return (drug_fingerprint_df, drug_rdkit_2d_normalized_df)
+

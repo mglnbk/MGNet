@@ -9,6 +9,7 @@ from config_path import PUBCHEM_ID_SMILES_PATH
 from sklearn.metrics import pairwise_distances
 import numpy as np
 
+# CIDs are all extracted from PubChem Id Convertors
 class Drug:
     def __init__(self) -> None:
         
