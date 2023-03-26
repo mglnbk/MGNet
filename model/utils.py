@@ -6,6 +6,8 @@ path = Path(__file__).parent.parent.absolute()
 sys.path.append(realpath(path)) # Project root folder
 from config_path import RAW_DRUG_GDSC_PATH, RAW_DRUG_CTRP_PATH
 from config_path import PUBCHEM_ID_SMILES_PATH
+from sklearn.metrics import pairwise_distances
+import numpy as np
 
 class Drug:
     def __init__(self) -> None:
@@ -36,3 +38,9 @@ class Drug:
                                 namespace='cid')
         self.cid2smiles = pd.DataFrame(te).astype('str')
         self.cid2smiles.to_csv(PUBCHEM_ID_SMILES_PATH, index=None)
+
+def sim_matrix(df):
+    dist_matrix = pairwise_distances(df.values, metric='euclidean')
+    gamma = 1/df.values.shape[1]
+    gamma = 0.001
+    return np.exp(-np.square(dist_matrix) * gamma)
