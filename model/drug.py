@@ -7,12 +7,17 @@ import ast
 import pandas as pd
 import numpy as np
 from rdkit import Chem, RDLogger
+from DeepPurpose import CompoundPred as models
+from DeepPurpose.utils import smiles2pubchem, smiles2rdkit2d
+from DeepPurpose.dataset import *
 from rdkit.Chem import BondType
 from pathlib import Path
 from os.path import realpath
 path = Path(__file__).parent.parent.absolute()
 sys.path.append(realpath(path)) # Project root folder
 from config_path import *
+
+
 
 RDLogger.DisableLog("rdApp.*")
 
@@ -113,6 +118,30 @@ def graph_to_molecule(graph):
 
 
 # 注：min-Max归一化需要在分割完训练集和测试集和Validation set之后再进行
+def get_drug_feature() -> pd.DataFrame:
+
+    drug_AdjacencyTensor = []
+    drug_FeatureTensor = []
+
+    df = pd.read_csv(PUBCHEM_ID_SMILES_PATH)
+    df.drop_duplicates(subset=['CID'], inplace=True)
+
+    for i in df["CanonicalSMILES"]:
+        _ad, _fe = smiles_to_graph(i)
+        drug_AdjacencyTensor.append(_ad)
+        drug_FeatureTensor.append(_fe)
+
+    drug_AdjacencyTensor = np.array(drug_AdjacencyTensor)
+    drug_FeatureTensor = np.array(drug_FeatureTensor)
+
+    vae = load_model(PRETRAINED_BETA_VAE_PATH, compile=False)
+
+    z_mean, _ = vae.encoder.predict([drug_AdjacencyTensor[:], drug_FeatureTensor[:]])
+    drug_feature_df = pd.DataFrame(data = z_mean, index=df['CID'])
+
+    return drug_feature_df
+
+
 def get_drug_feature() -> pd.DataFrame:
 
     drug_AdjacencyTensor = []

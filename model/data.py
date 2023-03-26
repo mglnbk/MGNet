@@ -7,7 +7,7 @@ from os.path import realpath
 path = Path(__file__).parent.parent.absolute()
 sys.path.append(realpath(path)) # Project root folder
 from config_path import *
-from model.beta_vae import *
+from model.drug import *
 import subprocess
 from model.utils import Drug
 
@@ -260,6 +260,7 @@ class Dataset:
         for i, celline in enumerate(similarity_df.columns):
             celline_feature[celline] = np.array(similarity_df.iloc[i].values)
         self.celline_feature = celline_feature
+        
         # Drug Filter
         self.drug_feature_df = get_drug_feature()
         # Integration Filter
