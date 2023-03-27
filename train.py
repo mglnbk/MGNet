@@ -79,7 +79,3 @@ model.fit(
     validation_split=.1,
     callbacks=[tensorboard_callback, reduce_lr, early_stop]
     )
-
-    
-
-        
