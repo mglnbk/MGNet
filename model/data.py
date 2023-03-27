@@ -7,10 +7,8 @@ from os.path import realpath
 path = Path(__file__).parent.parent.absolute()
 sys.path.append(realpath(path)) # Project root folder
 from config_path import *
-from model.drug import *
-import subprocess
-from model.utils import Drug
-
+from model.drug import Drug
+from model.utils import *
 
 # 注：min-Max归一化需要在分割完训练集和测试集和Validation set之后再进行
 
@@ -99,6 +97,7 @@ def load_data_snv(data_path) -> pd.DataFrame:
     print("Loading Mutations Data Done")
     return df_table
 
+
 class Dataset:
     """DatasetClass
 
@@ -120,7 +119,7 @@ class Dataset:
         if "snv" in feature_contained:
             self.snv = load_data_snv(RAW_SNV_GDSC_PATH)
 
-        self.drug_info = Drug()
+        self.drug_info = Drug(method='manual')
         # self.celline = load_data_celline(RAW_CELLINE_GDSC_PATH, "GDSC")
         self.experiment = load_data_experiment(RAW_EXPERIMENT_GDSC_PATH, self.dataset)
         print(self.experiment.columns)
@@ -236,33 +235,31 @@ class Dataset:
         }
     
     def return_feature(self, methods = ['SNF', 'beta-VAE']) -> dict:
-        self.omics_data['methylation'].to_csv(PROCESSED_METHYLATION_GDSC_PATH)
-        self.omics_data['gene_expression'].to_csv(PROCESSED_FPKM_GDSC_PATH)
-        self.omics_data['cnv'].to_csv(PROCESSED_CNV_GDSC_PATH)
-        self.omics_data['snv'].to_csv(PROCESSED_SNV_GDSC_PATH)
+    #     self.omics_data['methylation'].to_csv(PROCESSED_METHYLATION_GDSC_PATH)
+    #     self.omics_data['gene_expression'].to_csv(PROCESSED_FPKM_GDSC_PATH)
+    #     self.omics_data['cnv'].to_csv(PROCESSED_CNV_GDSC_PATH)
+    #     self.omics_data['snv'].to_csv(PROCESSED_SNV_GDSC_PATH)
 
-        # Omics_data Filter - SNF
-        # if methods[0] == "SNF":
-        #     print("Do Omics Integration!")
-        #     subprocess.call([
-        #         'Rscript', 
-        #         R_SCRIPT_PATH,
-        #         PROCESSED_CNV_GDSC_PATH, 
-        #         PROCESSED_FPKM_GDSC_PATH, 
-        #         PROCESSED_SNV_GDSC_PATH,
-        #         PROCESSED_METHYLATION_GDSC_PATH]
-        #         )
+    #     # Omics_data Filter - SNF
+    #     # if methods[0] == "SNF":
+    #     #     print("Do Omics Integration!")
+    #     #     subprocess.call([
+    #     #         'Rscript', 
+    #     #         R_SCRIPT_PATH,
+    #     #         PROCESSED_CNV_GDSC_PATH, 
+    #     #         PROCESSED_FPKM_GDSC_PATH, 
+    #     #         PROCESSED_SNV_GDSC_PATH,
+    #     #         PROCESSED_METHYLATION_GDSC_PATH]
+    #     #         )
         
-        similarity_df = pd.read_csv(SIM_PATH)
-        similarity_df.drop(columns=['Unnamed: 0'], inplace=True)
-        similarity_df.columns = self.omics_data['cnv'].index
-        celline_feature = {}
-        for i, celline in enumerate(similarity_df.columns):
-            celline_feature[celline] = np.array(similarity_df.iloc[i].values)
-        self.celline_feature = celline_feature
+    #     # similarity_df = pd.read_csv(SIM_PATH)
+    #     # similarity_df.drop(columns=['Unnamed: 0'], inplace=True)
+    #     # similarity_df.columns = self.omics_data['cnv'].index
+    #     # celline_feature = {}
+    #     # for i, celline in enumerate(similarity_df.columns):
+    #     #     celline_feature[celline] = np.array(similarity_df.iloc[i].values)
+    #     # self.celline_feature = celline_feature # dictionary
         
-        # Drug Filter
-        self.drug_feature_df = get_drug_feature()
         # Integration Filter
         s = []
         for i in self.processed_experiment['SAMPLE_BARCODE']:

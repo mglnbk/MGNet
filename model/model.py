@@ -1,7 +1,6 @@
 import tensorflow as tf
-import pandas as pd
-import numpy as np
 from tensorflow import keras
+import sys
 from keras import Model, layers
 from data import Dataset
 from pathlib import Path
@@ -9,8 +8,8 @@ from os.path import realpath
 path = Path(__file__).parent.parent.absolute()
 sys.path.append(realpath(path)) # Project root folder
 from config_path import * 
-import subprocess
-from beta_vae import *
+from model.data import Dataset
+
 
 class multichannel_network(Model):
     def __init__(self, 
@@ -20,18 +19,22 @@ class multichannel_network(Model):
                  ):
         super().__init__(self)
         self.dropout_rate = dropout
-        self.ds = Dataset(feature_contained)
-        self.feature = self.ds.return_feature()
+        self.ds = Dataset(feature_contained, 'GDSC')
         
     def build(self, input_shape):
-        self.dense1 = layers.Dense(units=1024, activation='relu'),
-        self.bn1 = layers.BatchNormalization(),
-        self.dense2 = layers.Dense(units=128, activation='relu'),
-        self.bn2 = layers.BatchNormalization(),
-        self.dropout = layers.Dropout(rate = self.dropout_rate),
-        self.dense3 = layers.Dense(1, activation='sigmoid')
+        # Molecular finger print, Conv1D
+        
 
-    def call(self, inputs, training=False, mask=None):
+        # Molecular 2D Component
+        self.fp_dense1 = layers.Dense(units=1024, activation='relu')
+        self.fp_bn1 = layers.BatchNormalization()
+        self.fp_dense2 = layers.Dense(units=256, activation='relu')
+        self.fp_bn2 = layers.BatchNormalization()
+        self.fp_dropout = layers.Dropout(rate = self.dropout_rate)
+
+        # 
+
+    def call(self, data):
         x = self.dense1(inputs)
         x = self.bn1(x)
         x = self.dense2(x)

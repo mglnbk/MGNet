@@ -1,11 +1,10 @@
 import pandas as pd
+import numpy as np
 from os.path import realpath
 import sys
 import pandas as pd
 from keras.models import load_model
 import ast
-import pandas as pd
-import numpy as np
 from rdkit import Chem, RDLogger
 from DeepPurpose import CompoundPred as models
 from DeepPurpose.utils import smiles2pubchem, smiles2rdkit2d
@@ -16,7 +15,6 @@ from os.path import realpath
 path = Path(__file__).parent.parent.absolute()
 sys.path.append(realpath(path)) # Project root folder
 from config_path import *
-
 
 
 RDLogger.DisableLog("rdApp.*")
@@ -116,33 +114,7 @@ def graph_to_molecule(graph):
 
     return molecule
 
-
-# 注：min-Max归一化需要在分割完训练集和测试集和Validation set之后再进行
-def get_drug_feature() -> pd.DataFrame:
-
-    drug_AdjacencyTensor = []
-    drug_FeatureTensor = []
-
-    df = pd.read_csv(PUBCHEM_ID_SMILES_PATH)
-    df.drop_duplicates(subset=['CID'], inplace=True)
-
-    for i in df["CanonicalSMILES"]:
-        _ad, _fe = smiles_to_graph(i)
-        drug_AdjacencyTensor.append(_ad)
-        drug_FeatureTensor.append(_fe)
-
-    drug_AdjacencyTensor = np.array(drug_AdjacencyTensor)
-    drug_FeatureTensor = np.array(drug_FeatureTensor)
-
-    vae = load_model(PRETRAINED_BETA_VAE_PATH, compile=False)
-
-    z_mean, _ = vae.encoder.predict([drug_AdjacencyTensor[:], drug_FeatureTensor[:]])
-    drug_feature_df = pd.DataFrame(data = z_mean, index=df['CID'])
-
-    return drug_feature_df
-
-
-def get_drug_feature(method) -> pd.DataFrame:
+def get_drug_feature(method):
     df = pd.read_csv(PUBCHEM_ID_SMILES_PATH)
     df.drop_duplicates(subset=['CID'], inplace=True)
     if method == "beta-VAE":
@@ -162,7 +134,7 @@ def get_drug_feature(method) -> pd.DataFrame:
         z_mean, _ = vae.encoder.predict([drug_AdjacencyTensor[:], drug_FeatureTensor[:]])
         drug_feature_df = pd.DataFrame(data = z_mean, index=df['CID'])
 
-        return drug_feature_df
+        return {'beta-VAE': drug_feature_df}
     
     elif method == "manual":
         fingerprint = []
@@ -175,5 +147,46 @@ def get_drug_feature(method) -> pd.DataFrame:
         drug_fingerprint_df = pd.DataFrame(data=fingerprint, index=df['CID'])
         drug_rdkit_2d_normalized_df = pd.DataFrame(data=rdkit_2d_normalized, index=df['CID'])
 
-        return (drug_fingerprint_df, drug_rdkit_2d_normalized_df)
+        return {"fingerprint": drug_fingerprint_df, 
+                "rdkit2d": drug_rdkit_2d_normalized_df
+                }
 
+
+# CIDs are all extracted from PubChem Id Convertors
+class Drug:
+    def __init__(self, method='manual'):
+        print("Begin loading drug data...")
+        df = pd.read_csv(RAW_DRUG_CTRP_PATH, 
+                         sep='\t', 
+                         dtype=('str', 'str')
+                         )
+        df.dropna(inplace=True)
+        df.reset_index(drop=True, inplace=True)
+
+        df2 = pd.read_csv(RAW_DRUG_GDSC_PATH, 
+                          sep='\t', 
+                          dtype=('str', 'str')
+                          )
+        df2.drop_duplicates(subset=['SYNONYMS'], keep='first', inplace=True)
+        df2.dropna(inplace=True)
+        df2.reset_index(drop=True, inplace=True)
+
+
+        self.gdsc_filter = df2 # cols = ['SYNONYMS', 'CID']
+        self.ctrp_filter = df  # cols = ['SMILES', 'CID']
+
+        print(f"After filtering, GDSC has tested {len(self.gdsc_filter)} drugs \n CTRP has tested {len(self.ctrp_filter)} drugs")
+
+        self.all_cids = pd.concat([df[['CID']], df2[['CID']]]).drop_duplicates(keep='first').reset_index(drop=True)
+
+        print(f"After combining, unique cid number is {len(self.all_cids)}")
+        import pubchempy as pcp
+        te = pcp.get_properties(properties=['canonical_smiles'], 
+                                identifier=list(self.all_cids['CID']),
+                                namespace='cid')
+        self.cid2smiles = pd.DataFrame(te).astype('str')
+        self.cid2smiles.to_csv(PUBCHEM_ID_SMILES_PATH, index=None)
+
+        self.drug_feature = get_drug_feature(method=method)
+
+        print("Drug data loaded")
