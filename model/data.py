@@ -1,6 +1,5 @@
 import pandas as pd
 import numpy as np
-from tensorflow import keras
 import sys
 from pathlib import Path
 from os.path import realpath
@@ -9,6 +8,7 @@ sys.path.append(realpath(path)) # Project root folder
 from config_path import *
 from model.drug import Drug
 from model.utils import *
+import torch
 
 # 注：min-Max归一化需要在分割完训练集和测试集和Validation set之后再进行
 
@@ -98,7 +98,7 @@ def load_data_snv(data_path) -> pd.DataFrame:
     return df_table
 
 
-class Dataset:
+class Dataset(torch.utils.data.Dataset):
     """DatasetClass
 
     Returns:
@@ -269,3 +269,18 @@ class Dataset:
             combined_feature = np.hstack([celline_feature_array, drug_feature_array])
             s.append(combined_feature)
         return np.array(s)
+
+    def __len__(self):
+        'Denotes the total number of samples'
+        return len(self.processed_experiment)
+
+    def __getitem__(self, index):
+        'Generates one sample of data'
+        # Select sample
+        ID = self.list_IDs[index]
+
+        # Load data and get label
+        X = torch.load('data/' + ID + '.pt')
+        y = self.labels[ID]
+
+        return X, y
