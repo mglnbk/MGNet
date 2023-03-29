@@ -311,40 +311,4 @@ class Dataset(keras.utils.Sequence):
             "response": self.response,
             "experiment": self.processed_experiment
         }
-    
-    def return_feature(self, methods = ['SNF', 'beta-VAE']) -> dict:
-    #     self.omics_data['methylation'].to_csv(PROCESSED_METHYLATION_GDSC_PATH)
-    #     self.omics_data['gene_expression'].to_csv(PROCESSED_FPKM_GDSC_PATH)
-    #     self.omics_data['cnv'].to_csv(PROCESSED_CNV_GDSC_PATH)
-    #     self.omics_data['snv'].to_csv(PROCESSED_SNV_GDSC_PATH)
-
-    #     # Omics_data Filter - SNF
-    #     # if methods[0] == "SNF":
-    #     #     print("Do Omics Integration!")
-    #     #     subprocess.call([
-    #     #         'Rscript', 
-    #     #         R_SCRIPT_PATH,
-    #     #         PROCESSED_CNV_GDSC_PATH, 
-    #     #         PROCESSED_FPKM_GDSC_PATH, 
-    #     #         PROCESSED_SNV_GDSC_PATH,
-    #     #         PROCESSED_METHYLATION_GDSC_PATH]
-    #     #         )
-        
-    #     # similarity_df = pd.read_csv(SIM_PATH)
-    #     # similarity_df.drop(columns=['Unnamed: 0'], inplace=True)
-    #     # similarity_df.columns = self.omics_data['cnv'].index
-    #     # celline_feature = {}
-    #     # for i, celline in enumerate(similarity_df.columns):
-    #     #     celline_feature[celline] = np.array(similarity_df.iloc[i].values)
-    #     # self.celline_feature = celline_feature # dictionary
-        
-        # Integration Filter
-        s = []
-        for i in self.processed_experiment['SAMPLE_BARCODE']:
-            celline_name, pubchem_id = i.split('_')
-            celline_feature_array = celline_feature[celline_name]
-            drug_feature_array = self.drug_feature_df.loc[int(pubchem_id)].values
-            combined_feature = np.hstack([celline_feature_array, drug_feature_array])
-            s.append(combined_feature)
-        return np.array(s)
 
