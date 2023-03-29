@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import keras
 import sys
 from pathlib import Path
 from os.path import realpath
@@ -8,7 +9,6 @@ sys.path.append(realpath(path)) # Project root folder
 from config_path import *
 from model.drug import Drug
 from model.utils import *
-import torch
 
 # 注：min-Max归一化需要在分割完训练集和测试集和Validation set之后再进行
 
@@ -80,6 +80,7 @@ def load_data_methylation(data_path) -> pd.DataFrame:
     temp['Sentrix_Barcode'] = list("_".join([i,j]) for i, j in zip(temp['Sentrix_ID'].astype(str), temp['Sentrix_Position']))
     tb = dict(zip(temp['Sentrix_Barcode'], temp['Sample_Name']))
     met_df.rename(columns=tb, inplace=True)
+    print(met_df.isna().sum().sum())
     print("Loading Methylation Data Done")
     return met_df.T
 
@@ -94,18 +95,26 @@ def load_data_snv(data_path) -> pd.DataFrame:
                                 values='effect',
                                 aggfunc='count',
                                 fill_value=0)
+    print(df_table.isna().sum().sum())
     print("Loading Mutations Data Done")
     return df_table
 
 
-class Dataset(torch.utils.data.Dataset):
-    """DatasetClass
+class Dataset(keras.utils.Sequence):
+    """DatasetClass, inherited from keras.utils.Sequence
 
     Returns:
-        _type_: _description_
+        keras Dataset: A wrapped keras dataset object
     """
     # This class will facilitate the creation of Dataset
-    def __init__(self, feature_contained = ['cnv', 'gene_expression'], dataset = 'GDSC'):
+    def __init__(self, 
+                 feature_contained = ['cnv', 'gene_expression'], 
+                 dataset = 'GDSC',
+                 batch_size=32,
+                 shuffle = True,
+                 set_label = True,
+                 response = 'AUC' # 'LN_IC50'
+                 ):
         self.feature_contained = feature_contained
         self.dataset = dataset
 
@@ -129,7 +138,76 @@ class Dataset(torch.utils.data.Dataset):
 
         # Then preprocess omics data and response
         self.omics_data = self.preprocess_omics()
-        self.response = self.prepare_response()
+        self.response = self.prepare_response(res=response) # pd.DataFrame
+
+        # Prepare keras dataset configurations, for training
+        if set_label:
+            y = []
+            for i in self.processed_experiment[response]:
+                if (i<=0.9):
+                    y.append(1)
+                else:
+                    y.append(0)
+            self.labels = {
+                _id:_y for _, (_id, _y) in enumerate(zip(self.response['SAMPLE_BARCODE'], y))
+            }
+            print(self.labels)
+        else:
+            self.labels = {
+                _id:_y for _, (_id, _y) in enumerate(zip(self.response['SAMPLE_BARCODE'], self.processed_experiment[response]))
+            }
+        self.batch_size = batch_size
+        self.sample_barcode = list(self.processed_experiment['SAMPLE_BARCODE'])
+        self.shuffle = shuffle
+        self.on_epoch_end()
+
+    def __len__(self):
+        'Denotes the number of batches per epoch'
+        return int(np.floor(len(self.sample_barcode) / self.batch_size))
+    
+    def on_epoch_end(self):
+        'Updates indexes after each epoch'
+        self.indexes = np.arange(len(self.sample_barcode))
+        if self.shuffle == True:
+            np.random.shuffle(self.indexes)
+
+    def __data_generation(self, sample_barcode_temp):
+        'Generates data containing batch_size samples' # X : (n_samples, *dim, n_channels)
+        # Initialization
+        X_cnv = np.empty((self.batch_size, self.cnv.shape[1]))
+        X_snv = np.empty((self.batch_size, self.snv.shape[1]))
+        X_expr = np.empty((self.batch_size, self.fpkm.shape[1]))
+        X_rdkit2d = np.empty((self.batch_size, 200))
+        X_methylation = np.empty((self.batch_size, self.methylation.shape[1]))
+        X_fingerprint = np.empty((self.batch_size, 881))
+        y = np.empty((self.batch_size), dtype=int)
+
+        # Generate data
+        for i, ID in enumerate(sample_barcode_temp):
+            # Store sample
+            X_cnv[i,] = self.cnv.loc[ID.split("_")[0]].values.astype(np.float32)
+            X_expr[i,] = self.fpkm.loc[ID.split("_")[0]].values.astype(np.float32)
+            X_snv[i,] = self.snv.loc[ID.split("_")[0]].values.astype(np.float32)
+            # X_methylation[i,] = self.methylation.loc[ID.split("_")[0]].values.astype(np.float32)
+            X_rdkit2d[i,] = self.drug_info.drug_feature['rdkit2d'].loc[int(ID.split("_")[1])].values.astype(np.float32)
+            X_fingerprint[i,] = self.drug_info.drug_feature['fingerprint'].loc[int(ID.split("_")[1])].values.astype(np.float32)
+            # Store class
+            y[i] = self.labels[ID]
+            # print(X_cnv.shape, X_cnv.dtype, str(X_cnv))
+            # print(y.shape, y.dtype, str(y))
+
+        return (X_fingerprint, X_rdkit2d, X_cnv, X_expr, X_snv), y# keras.utils.to_categorical(y, num_classes=2)
+    
+    def __getitem__(self, index):
+        'Generate one batch of data'
+        # Generate indexes of the batch
+        indexes = self.indexes[index*self.batch_size:(index+1)*self.batch_size]
+
+        # Find list of IDs
+        sample_barcode_temp = [self.sample_barcode[k] for k in indexes]
+
+        # Generate data
+        return self.__data_generation(sample_barcode_temp)
 
     def preprocess_experiment(self):
         print("Begin Preprocessing Experiment!")
@@ -184,10 +262,10 @@ class Dataset(torch.utils.data.Dataset):
             s['methylation'] = self.methylation.loc[self.celline_barcode]
         return s
 
-    def prepare_response(self) -> pd.DataFrame:
+    def prepare_response(self, res) -> pd.DataFrame:
         response = pd.DataFrame()
-        response['sample_barcode'] = self.processed_experiment['SAMPLE_BARCODE']
-        response['AUC'] = self.processed_experiment['AUC']
+        response['SAMPLE_BARCODE'] = self.processed_experiment['SAMPLE_BARCODE']
+        response['RESPONSE'] = self.processed_experiment[res]
         response.reset_index(drop=True, inplace=True)
         return response
 
@@ -270,17 +348,3 @@ class Dataset(torch.utils.data.Dataset):
             s.append(combined_feature)
         return np.array(s)
 
-    def __len__(self):
-        'Denotes the total number of samples'
-        return len(self.processed_experiment)
-
-    def __getitem__(self, index):
-        'Generates one sample of data'
-        # Select sample
-        ID = self.list_IDs[index]
-
-        # Load data and get label
-        X = torch.load('data/' + ID + '.pt')
-        y = self.labels[ID]
-
-        return X, y

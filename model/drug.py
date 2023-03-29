@@ -2,7 +2,6 @@ import pandas as pd
 import numpy as np
 from os.path import realpath
 import sys
-import pandas as pd
 from keras.models import load_model
 import ast
 from rdkit import Chem, RDLogger
@@ -147,7 +146,8 @@ def get_drug_feature(method):
         drug_fingerprint_df = pd.DataFrame(data=fingerprint, index=df['CID'])
         drug_rdkit_2d_normalized_df = pd.DataFrame(data=rdkit_2d_normalized, index=df['CID'])
 
-        return {"fingerprint": drug_fingerprint_df, 
+        return {
+                "fingerprint": drug_fingerprint_df, 
                 "rdkit2d": drug_rdkit_2d_normalized_df
                 }
 
