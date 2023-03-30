@@ -40,17 +40,13 @@ class CalculateSimilarity(Layer):
 
 class multichannel_network(Model):
     def __init__(self,
-                 feature_contained = ['cnv',
-                                      'gene_expression',
-                                      'snv',
-                                      'methylation'
-                                      ],
+                 dataset,
                  dropout=.5,
                  n_channels = 4
                  ):
         super().__init__(self)
         self.dropout_rate = dropout
-        self.ds = Dataset(feature_contained, 'GDSC')
+        self.ds = dataset
         self.n_channels = n_channels
 
     def build(self, input_shape):
@@ -80,36 +76,40 @@ class multichannel_network(Model):
         self.rdkit_dropout = layers.Dropout(rate = self.dropout_rate)
 
         # Copy Number Variation
-        self.similarity_layer_cnv = CalculateSimilarity(sample_matrix=self.ds.omics_data['cnv'])
-        self.cnv_dense1 = layers.Dense(units=512, activation='relu')
-        self.cnv_bn1 = layers.BatchNormalization()
-        self.cnv_dense2 = layers.Dense(units=128, activation='relu')
-        self.cnv_bn2 = layers.BatchNormalization()
-        self.cnv_dropout = layers.Dropout(rate = self.dropout_rate)
+        if 'cnv' in self.ds.feature_contained:
+          self.similarity_layer_cnv = CalculateSimilarity(sample_matrix=self.ds.omics_data['cnv'])
+          self.cnv_dense1 = layers.Dense(units=512, activation='relu')
+          self.cnv_bn1 = layers.BatchNormalization()
+          self.cnv_dense2 = layers.Dense(units=128, activation='relu')
+          self.cnv_bn2 = layers.BatchNormalization()
+          self.cnv_dropout = layers.Dropout(rate = self.dropout_rate)
 
         # Gene Expression
-        self.similarity_layer_expr = CalculateSimilarity(sample_matrix=self.ds.omics_data['gene_expression'])
-        self.gene_expression_dense1 = layers.Dense(units=512, activation='relu')
-        self.gene_expression_bn1 = layers.BatchNormalization()
-        self.gene_expression_dense2 = layers.Dense(units=128, activation='relu')
-        self.gene_expression_bn2 = layers.BatchNormalization()
-        self.gene_expression_dropout = layers.Dropout(rate = self.dropout_rate)
+        if 'gene_expression' in self.ds.feature_contained:
+          self.similarity_layer_expr = CalculateSimilarity(sample_matrix=self.ds.omics_data['gene_expression'])
+          self.gene_expression_dense1 = layers.Dense(units=512, activation='relu')
+          self.gene_expression_bn1 = layers.BatchNormalization()
+          self.gene_expression_dense2 = layers.Dense(units=128, activation='relu')
+          self.gene_expression_bn2 = layers.BatchNormalization()
+          self.gene_expression_dropout = layers.Dropout(rate = self.dropout_rate)
 
         # Methylation
-        self.similarity_layer_meth = CalculateSimilarity(sample_matrix=self.ds.omics_data['methylation'])
-        self.methylation_dense1 = layers.Dense(units=512, activation='relu')
-        self.methylation_bn1 = layers.BatchNormalization()
-        self.methylation_dense2 = layers.Dense(units=128, activation='relu')
-        self.methylation_bn2 = layers.BatchNormalization()
-        self.methylation_dropout = layers.Dropout(rate = self.dropout_rate)
+        if 'methylation' in self.ds.feature_contained:
+          self.similarity_layer_meth = CalculateSimilarity(sample_matrix=self.ds.omics_data['methylation'])
+          self.methylation_dense1 = layers.Dense(units=512, activation='relu')
+          self.methylation_bn1 = layers.BatchNormalization()
+          self.methylation_dense2 = layers.Dense(units=128, activation='relu')
+          self.methylation_bn2 = layers.BatchNormalization()
+          self.methylation_dropout = layers.Dropout(rate = self.dropout_rate)
 
         # Gene Mutations
-        self.similarity_layer_mut = CalculateSimilarity(sample_matrix=self.ds.omics_data['snv'])
-        self.mutations_dense1 = layers.Dense(units=512, activation='relu')
-        self.mutations_bn1 = layers.BatchNormalization()
-        self.mutations_dense2 = layers.Dense(units=128, activation='relu')
-        self.mutations_bn2 = layers.BatchNormalization()
-        self.mutations_dropout = layers.Dropout(rate = self.dropout_rate)
+        if 'snv' in self.ds.feature_contained:
+          self.similarity_layer_mut = CalculateSimilarity(sample_matrix=self.ds.omics_data['snv'])
+          self.mutations_dense1 = layers.Dense(units=512, activation='relu')
+          self.mutations_bn1 = layers.BatchNormalization()
+          self.mutations_dense2 = layers.Dense(units=128, activation='relu')
+          self.mutations_bn2 = layers.BatchNormalization()
+          self.mutations_dropout = layers.Dropout(rate = self.dropout_rate)
 
         # Integration Layer
         self.concat = Concatenate()
@@ -123,8 +123,7 @@ class multichannel_network(Model):
     def call(self, inputs):
         
         # Finger Print
-        x = inputs[0]
-        x = self.reshape_layer(x)
+        x = self.reshape_layer(inputs[0])
         x = self.fp_conv1(x)
         x = self.fp_bn1(x)
         x = self.fp_pool1(x)
@@ -148,40 +147,50 @@ class multichannel_network(Model):
         r = self.rdkit_bn2(r)
         r = self.rdkit_dropout(r)
 
+        feature = [x, r]
         # CNV
-        c = self.similarity_layer_cnv(inputs[2])
-        c = self.cnv_dense1(c)
-        c = self.cnv_bn1(c)
-        c = self.cnv_dense2(c)
-        c = self.cnv_bn2(c)
-        c = self.cnv_dropout(c)
+        if 'cnv' in self.ds.feature_contained:
+          c = self.similarity_layer_cnv(inputs[2])
+          c = self.cnv_dense1(c)
+          c = self.cnv_bn1(c)
+          c = self.cnv_dense2(c)
+          c = self.cnv_bn2(c)
+          c = self.cnv_dropout(c)
+          feature.append(c)
 
         # gene_expression 
-        g = self.similarity_layer_expr(inputs[3])
-        g = self.gene_expression_dense1(g)
-        g = self.gene_expression_bn1(g)
-        g = self.gene_expression_dense2(g)
-        g = self.gene_expression_bn2(g)
-        g = self.gene_expression_dropout(g)
+        if 'gene_expression' in self.ds.feature_contained:
+          g = self.similarity_layer_expr(inputs[3])
+          g = self.gene_expression_dense1(g)
+          g = self.gene_expression_bn1(g)
+          g = self.gene_expression_dense2(g)
+          g = self.gene_expression_bn2(g)
+          g = self.gene_expression_dropout(g)
+          feature.append(g)
 
         # mutations
-        mut = self.similarity_layer_mut(inputs[4])
-        mut = self.mutations_dense1(mut)
-        mut = self.mutations_bn1(mut)
-        mut = self.mutations_dense2(mut)
-        mut = self.mutations_bn2(mut)
-        mut = self.mutations_dropout(mut)
+        if 'snv' in self.ds.feature_contained:
+          mut = self.similarity_layer_mut(inputs[4])
+          mut = self.mutations_dense1(mut)
+          mut = self.mutations_bn1(mut)
+          mut = self.mutations_dense2(mut)
+          mut = self.mutations_bn2(mut)
+          mut = self.mutations_dropout(mut)
+          feature.append(mut)
 
         # methylation
-        meth = self.similarity_layer_meth(inputs[5])
-        meth = self.methylation_dense1(meth) 
-        meth = self.methylation_bn1(meth)
-        meth = self.methylation_dense2(meth)
-        meth = self.methylation_bn2(meth)
-        meth = self.methylation_dropout(meth)
+        if 'methylation' in self.ds.feature_contained:
+          meth = self.similarity_layer_meth(inputs[5])
+          meth = self.methylation_dense1(meth) 
+          meth = self.methylation_bn1(meth)
+          meth = self.methylation_dense2(meth)
+          meth = self.methylation_bn2(meth)
+          meth = self.methylation_dropout(meth)
 
         # Concat
-        output = self.concat([x, r, c, g, mut, meth])
+        if len(feature) == 2:
+           raise RuntimeError("No features of cellines specified")
+        output = self.concat(feature)
         output = self.integration_dense1(output)
         output = self.intergration_bn1(output)
         output = self.integration_dense2(output)

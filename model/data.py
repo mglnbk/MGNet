@@ -411,19 +411,28 @@ class DataGenerator(keras.utils.Sequence):
     def __data_generation(self, sample_barcode_temp):
         'Generates data containing batch_size samples' # X : (n_samples, *dim, n_channels)
         # Initialization
-        if 'cnv' in list(self.omics_data.keys()):
-            X_cnv = np.empty((self.batch_size, self.omics_dim['cnv']))
-        if 'snv' in list(self.omics_data.keys()):
-            X_snv = np.empty((self.batch_size, self.omics_dim['snv']))
-        if 'gene_expression' in list(self.omics_data.keys()):
-            X_expr = np.empty((self.batch_size, self.omics_dim['gene_expression']))
-        if 'methylation' in list(self.omics_data.keys()): 
-            X_methylation = np.empty((self.batch_size, self.omics_dim['methylation']))
+        omics_feature = []
         X_rdkit2d = np.empty((self.batch_size, self.drug_dim['rdkit2d']))
         X_fingerprint = np.empty((self.batch_size, self.drug_dim['fingerprint']))
+        omics_feature.append(X_fingerprint)
+        omics_feature.append(X_rdkit2d)
+        if 'cnv' in list(self.omics_data.keys()):
+            X_cnv = np.empty((self.batch_size, self.omics_dim['cnv']))
+            omics_feature.append(X_cnv)
+        if 'snv' in list(self.omics_data.keys()):
+            X_snv = np.empty((self.batch_size, self.omics_dim['snv']))
+            omics_feature.append(X_snv)
+        if 'gene_expression' in list(self.omics_data.keys()):
+            X_expr = np.empty((self.batch_size, self.omics_dim['gene_expression']))
+            omics_feature.append(X_expr)
+        if 'methylation' in list(self.omics_data.keys()): 
+            X_methylation = np.empty((self.batch_size, self.omics_dim['methylation']))
+            omics_feature.append(X_methylation)
+        
         y = np.empty((self.batch_size), dtype=int)
 
         # Generate data
+        
         for i, ID in enumerate(sample_barcode_temp):
             # Store sample
             celline_id, cid = ID.split("_")
@@ -442,7 +451,7 @@ class DataGenerator(keras.utils.Sequence):
             # print(X_cnv.shape, X_cnv.dtype, str(X_cnv))
             # print(y.shape, y.dtype, str(y))
 
-        return (X_fingerprint, X_rdkit2d, X_cnv, X_expr, X_snv, X_methylation), y# keras.utils.to_categorical(y, num_classes=2)
+        return omics_feature, y # keras.utils.to_categorical(y, num_classes=2)
     
     def __getitem__(self, index):
         'Generate one batch of data'
