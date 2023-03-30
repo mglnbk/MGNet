@@ -37,9 +37,4 @@ _model.compile(optimizer=tf.keras.optimizers.Adam(),
               ]
             )
 
-# _model.fit(
-#     x=_model.ds,
-#     epochs=epochs
-#     )
-
-_model.fit_generator(generator=ds)
+_model.fit(x=ds)

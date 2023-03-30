@@ -1,20 +1,23 @@
-import numpy as np
 import tensorflow as tf
 import sys
 from keras import Model, layers
 from keras import backend as K
-from keras.layers import Conv1D, MaxPool1D, Dense, BatchNormalization, Lambda
-from keras.layers import Flatten, Layer, Concatenate, Reshape, Subtract
+from keras.layers import Conv1D, MaxPool1D, Dense, BatchNormalization
+from keras.layers import Flatten, Layer, Concatenate, Reshape
 from pathlib import Path
 from os.path import realpath
 path = Path(__file__).parent.parent.absolute()
 sys.path.append(realpath(path)) # Project root folder
 from config_path import *
 from model.data import Dataset
-from sklearn.metrics import pairwise_distances
 
 
 class CalculateSimilarity(Layer):
+  """Layer for calculating the similarity network
+
+  Args:
+      Layer (keras.layers.Layer): inherited
+  """
 
   def __init__(self, sample_matrix, metric = 'euclidean', name=None, **kwargs):
     self.metric = metric
@@ -25,7 +28,6 @@ class CalculateSimilarity(Layer):
   def call(self, inputs):
     print(inputs.shape)
     inputs = K.stack([inputs]*len(self.sample_matrix), axis=-2)
-    # sample_tensor = K._to_tensor(self.sample_matrix.values, dtype=tf.float32) 
     temp = K.stack([self.sample_matrix]*len(inputs), axis=0)
     temp = tf.cast(temp, tf.float32)
     inputs = tf.cast(inputs, tf.float32)
@@ -94,12 +96,12 @@ class multichannel_network(Model):
         self.gene_expression_dropout = layers.Dropout(rate = self.dropout_rate)
 
         # Methylation
-        # self.similarity_layer_meth = CalculateSimilarity(sample_matrix=self.ds.omics_data['methylation'])
-        # self.methylation_dense1 = layers.Dense(units=512, activation='relu')
-        # self.methylation_bn1 = layers.BatchNormalization()
-        # self.methylation_dense2 = layers.Dense(units=128, activation='relu')
-        # self.methylation_bn2 = layers.BatchNormalization()
-        # self.methylation_dropout = layers.Dropout(rate = self.dropout_rate)
+        self.similarity_layer_meth = CalculateSimilarity(sample_matrix=self.ds.omics_data['methylation'])
+        self.methylation_dense1 = layers.Dense(units=512, activation='relu')
+        self.methylation_bn1 = layers.BatchNormalization()
+        self.methylation_dense2 = layers.Dense(units=128, activation='relu')
+        self.methylation_bn2 = layers.BatchNormalization()
+        self.methylation_dropout = layers.Dropout(rate = self.dropout_rate)
 
         # Gene Mutations
         self.similarity_layer_mut = CalculateSimilarity(sample_matrix=self.ds.omics_data['snv'])
@@ -171,15 +173,15 @@ class multichannel_network(Model):
         mut = self.mutations_dropout(mut)
 
         # methylation
-        # meth = self.similarity_layer_meth(inputs[5])
-        # meth = self.methylation_dense1(meth) 
-        # meth = self.methylation_bn1(meth)
-        # meth = self.methylation_dense2(meth)
-        # meth = self.methylation_bn2(meth)
-        # meth = self.methylation_dropout(meth)
+        meth = self.similarity_layer_meth(inputs[5])
+        meth = self.methylation_dense1(meth) 
+        meth = self.methylation_bn1(meth)
+        meth = self.methylation_dense2(meth)
+        meth = self.methylation_bn2(meth)
+        meth = self.methylation_dropout(meth)
 
         # Concat
-        output = self.concat([x, r, c, g, mut])
+        output = self.concat([x, r, c, g, mut, meth])
         output = self.integration_dense1(output)
         output = self.intergration_bn1(output)
         output = self.integration_dense2(output)

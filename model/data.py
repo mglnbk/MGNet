@@ -9,6 +9,7 @@ sys.path.append(realpath(path)) # Project root folder
 from config_path import *
 from model.drug import Drug
 from model.utils import *
+from sklearn.model_selection import train_test_split
 
 # 注：min-Max归一化需要在分割完训练集和测试集和Validation set之后再进行
 
@@ -80,7 +81,8 @@ def load_data_methylation(data_path) -> pd.DataFrame:
     temp['Sentrix_Barcode'] = list("_".join([i,j]) for i, j in zip(temp['Sentrix_ID'].astype(str), temp['Sentrix_Position']))
     tb = dict(zip(temp['Sentrix_Barcode'], temp['Sample_Name']))
     met_df.rename(columns=tb, inplace=True)
-    print(met_df.isna().sum().sum())
+    met_df = met_df.reset_index().drop_duplicates(subset='index', keep='first').rename(columns={'index': 'celline'})
+    met_df = met_df.set_index('celline')
     print("Loading Methylation Data Done")
     return met_df.T
 
@@ -95,23 +97,22 @@ def load_data_snv(data_path) -> pd.DataFrame:
                                 values='effect',
                                 aggfunc='count',
                                 fill_value=0)
-    print(df_table.isna().sum().sum())
     print("Loading Mutations Data Done")
     return df_table
 
 
-class Dataset(keras.utils.Sequence):
-    """DatasetClass, inherited from keras.utils.Sequence
+class Dataset():
+    """Dataset, include preprocessing and pre-split operations and etc.
 
     Returns:
-        keras Dataset: A wrapped keras dataset object
+        _type_: _description_
     """
     # This class will facilitate the creation of Dataset
     def __init__(self, 
                  feature_contained = ['cnv', 'gene_expression'], 
                  dataset = 'GDSC',
-                 batch_size=32,
-                 shuffle = True,
+                #  batch_size = 32,
+                #  shuffle = True,
                  set_label = True,
                  response = 'AUC' # 'LN_IC50'
                  ):
@@ -151,63 +152,117 @@ class Dataset(keras.utils.Sequence):
             self.labels = {
                 _id:_y for _, (_id, _y) in enumerate(zip(self.response['SAMPLE_BARCODE'], y))
             }
-            print(self.labels)
         else:
             self.labels = {
                 _id:_y for _, (_id, _y) in enumerate(zip(self.response['SAMPLE_BARCODE'], self.processed_experiment[response]))
             }
-        self.batch_size = batch_size
-        self.sample_barcode = list(self.processed_experiment['SAMPLE_BARCODE'])
-        self.shuffle = shuffle
-        self.on_epoch_end()
+        # self.batch_size = batch_size
+        self.sample_barcode = list(self.response['SAMPLE_BARCODE'])
+        # self.shuffle = shuffle
+        # self.on_epoch_end()
 
-    def __len__(self):
-        'Denotes the number of batches per epoch'
-        return int(np.floor(len(self.sample_barcode) / self.batch_size))
+    # def __len__(self):
+    #     'Denotes the number of batches per epoch'
+    #     return int(np.floor(len(self.sample_barcode) / self.batch_size))
     
-    def on_epoch_end(self):
-        'Updates indexes after each epoch'
-        self.indexes = np.arange(len(self.sample_barcode))
-        if self.shuffle == True:
-            np.random.shuffle(self.indexes)
+    # def on_epoch_end(self):
+    #     'Updates indexes after each epoch'
+    #     self.indexes = np.arange(len(self.sample_barcode))
+    #     if self.shuffle == True:
+    #         np.random.shuffle(self.indexes)
 
-    def __data_generation(self, sample_barcode_temp):
-        'Generates data containing batch_size samples' # X : (n_samples, *dim, n_channels)
-        # Initialization
-        X_cnv = np.empty((self.batch_size, self.cnv.shape[1]))
-        X_snv = np.empty((self.batch_size, self.snv.shape[1]))
-        X_expr = np.empty((self.batch_size, self.fpkm.shape[1]))
-        X_rdkit2d = np.empty((self.batch_size, 200))
-        X_methylation = np.empty((self.batch_size, self.methylation.shape[1]))
-        X_fingerprint = np.empty((self.batch_size, 881))
-        y = np.empty((self.batch_size), dtype=int)
+    # def __data_generation(self, sample_barcode_temp):
+    #     'Generates data containing batch_size samples' # X : (n_samples, *dim, n_channels)
+    #     # Initialization
+    #     X_cnv = np.empty((self.batch_size, self.cnv.shape[1]))
+    #     X_snv = np.empty((self.batch_size, self.snv.shape[1]))
+    #     X_expr = np.empty((self.batch_size, self.fpkm.shape[1]))
+    #     X_rdkit2d = np.empty((self.batch_size, 200))
+    #     X_methylation = np.empty((self.batch_size, self.methylation.shape[1]))
+    #     X_fingerprint = np.empty((self.batch_size, 881))
+    #     y = np.empty((self.batch_size), dtype=int)
 
-        # Generate data
-        for i, ID in enumerate(sample_barcode_temp):
-            # Store sample
-            X_cnv[i,] = self.cnv.loc[ID.split("_")[0]].values.astype(np.float32)
-            X_expr[i,] = self.fpkm.loc[ID.split("_")[0]].values.astype(np.float32)
-            X_snv[i,] = self.snv.loc[ID.split("_")[0]].values.astype(np.float32)
-            # X_methylation[i,] = self.methylation.loc[ID.split("_")[0]].values.astype(np.float32)
-            X_rdkit2d[i,] = self.drug_info.drug_feature['rdkit2d'].loc[int(ID.split("_")[1])].values.astype(np.float32)
-            X_fingerprint[i,] = self.drug_info.drug_feature['fingerprint'].loc[int(ID.split("_")[1])].values.astype(np.float32)
-            # Store class
-            y[i] = self.labels[ID]
-            # print(X_cnv.shape, X_cnv.dtype, str(X_cnv))
-            # print(y.shape, y.dtype, str(y))
+    #     # Generate data
+    #     for i, ID in enumerate(sample_barcode_temp):
+    #         # Store sample
+    #         celline_id, cid = ID.split("_")
+    #         X_cnv[i,] = self.cnv.loc[celline_id].values.astype(np.float32)
+    #         X_expr[i,] = self.fpkm.loc[celline_id].values.astype(np.float32)
+    #         X_snv[i,] = self.snv.loc[celline_id].values.astype(np.float32)
+    #         X_methylation[i,] = self.methylation.loc[celline_id].values.astype(np.float32)
+    #         X_rdkit2d[i,] = self.drug_info.drug_feature['rdkit2d'].loc[int(cid)].values.astype(np.float32)
+    #         X_fingerprint[i,] = self.drug_info.drug_feature['fingerprint'].loc[int(cid)].values.astype(np.float32)
+    #         # Store class
+    #         y[i] = self.labels[ID]
+    #         # print(X_cnv.shape, X_cnv.dtype, str(X_cnv))
+    #         # print(y.shape, y.dtype, str(y))
 
-        return (X_fingerprint, X_rdkit2d, X_cnv, X_expr, X_snv), y# keras.utils.to_categorical(y, num_classes=2)
+    #     return (X_fingerprint, X_rdkit2d, X_cnv, X_expr, X_snv, X_methylation), y# keras.utils.to_categorical(y, num_classes=2)
     
-    def __getitem__(self, index):
-        'Generate one batch of data'
-        # Generate indexes of the batch
-        indexes = self.indexes[index*self.batch_size:(index+1)*self.batch_size]
+    # def __getitem__(self, index):
+    #     'Generate one batch of data'
+    #     # Generate indexes of the batch
+    #     indexes = self.indexes[index*self.batch_size:(index+1)*self.batch_size]
 
-        # Find list of IDs
-        sample_barcode_temp = [self.sample_barcode[k] for k in indexes]
+    #     # Find list of IDs
+    #     sample_barcode_temp = [self.sample_barcode[k] for k in indexes]
 
-        # Generate data
-        return self.__data_generation(sample_barcode_temp)
+    #     # Generate data
+    #     return self.__data_generation(sample_barcode_temp)
+    
+    def split(self, rate=0.1, validation=True):
+        """split train and test(or validation) dataset
+
+        Args:
+            rate (float, optional): test_size. Defaults to 0.1.
+            validation (bool, optional): val or not. Defaults to True.
+
+        Returns:
+            dict: sample_barcode dict named partition['train', 'test', 'validation']
+        """
+        if validation==True:
+            sample_train, sample_test = train_test_split(self.sample_barcode,
+                                                         test_size=rate*2,
+                                                         random_state=42)
+            sample_test, sample_validation = train_test_split(sample_test,
+                                                              test_size=.5,
+                                                              random_state=42)
+            partition = {
+                "train": sample_train,
+                "test": sample_test,
+                "validation": sample_validation
+            }
+            return partition
+        else:
+            sample_train, sample_test = train_test_split(self.sample_barcode,
+                                                         test_size=rate,
+                                                         random_state=42)
+            partition = {
+                "train": sample_train,
+                "test": sample_test,
+            }
+            return partition
+        
+    def k_fold(self):
+        pass  
+    
+    def get_config(self):
+        """get data and its configurations for generators
+
+        Returns:
+            dict: "omics_dim": {"cnv": 123, "snv": 12312 ...}
+                  "drug_dim": {"rdkit2d": 200, "fingerprint": 881}
+                  "omics_data": {'cnv': pd.DataFrame....}
+                  "drug_data": {'rdkit2d': pd.DataFrame, 'fingerprint': pd.DataFrame}
+                  "labels": {"ID": 1, "ID": 2, ...}
+        """
+        return {
+            "omics_dim": {i:j.shape[1] for i,j in self.omics_data.items()},
+            "drug_dim": {i:j.shape[1] for i,j in self.drug_info.drug_feature.items()},
+            "omics_data": self.omics_data,
+            "drug_data": self.drug_info.drug_feature,
+            "labels": self.labels
+        }
 
     def preprocess_experiment(self):
         print("Begin Preprocessing Experiment!")
@@ -312,3 +367,97 @@ class Dataset(keras.utils.Sequence):
             "experiment": self.processed_experiment
         }
 
+
+
+class DataGenerator(keras.utils.Sequence):
+    """DataGenerator, receive Dataset object and create generator used for model.fit
+
+    Args:
+        keras (keras.utils.Sequence): inherited
+    """
+    def __init__(self, 
+                 sample_barcode, 
+                 omics_data,
+                 drug_data,
+                 labels, 
+                 omics_dim,
+                 drug_dim,
+                 batch_size=128, 
+                 n_classes=2, 
+                 shuffle=True,
+                 ) -> None:
+        super().__init__()
+        self.sample_barcode = sample_barcode
+        self.labels = labels
+        self.batch_size = batch_size
+        self.omics_dim = omics_dim
+        self.drug_dim = drug_dim
+        self.omics_data = omics_data
+        self.drug_data = drug_data
+        self.n_classes = n_classes
+        self.shuffle = shuffle
+        self.on_epoch_end()
+
+    def __len__(self):
+        'Denotes the number of batches per epoch'
+        return int(np.floor(len(self.sample_barcode) / self.batch_size))
+    
+    def on_epoch_end(self):
+        'Updates indexes after each epoch'
+        self.indexes = np.arange(len(self.sample_barcode))
+        if self.shuffle == True:
+            np.random.shuffle(self.indexes)
+
+    def __data_generation(self, sample_barcode_temp):
+        'Generates data containing batch_size samples' # X : (n_samples, *dim, n_channels)
+        # Initialization
+        if 'cnv' in list(self.omics_data.keys()):
+            X_cnv = np.empty((self.batch_size, self.omics_dim['cnv']))
+        if 'snv' in list(self.omics_data.keys()):
+            X_snv = np.empty((self.batch_size, self.omics_dim['snv']))
+        if 'gene_expression' in list(self.omics_data.keys()):
+            X_expr = np.empty((self.batch_size, self.omics_dim['gene_expression']))
+        if 'methylation' in list(self.omics_data.keys()): 
+            X_methylation = np.empty((self.batch_size, self.omics_dim['methylation']))
+        X_rdkit2d = np.empty((self.batch_size, self.drug_dim['rdkit2d']))
+        X_fingerprint = np.empty((self.batch_size, self.drug_dim['fingerprint']))
+        y = np.empty((self.batch_size), dtype=int)
+
+        # Generate data
+        for i, ID in enumerate(sample_barcode_temp):
+            # Store sample
+            celline_id, cid = ID.split("_")
+            if 'cnv' in list(self.omics_data.keys()): 
+                X_cnv[i,] = self.omics_data['cnv'].loc[celline_id].values.astype(np.float32)
+            if 'gene_expression' in list(self.omics_data.keys()):
+                X_expr[i,] = self.omics_data['gene_expression'].loc[celline_id].values.astype(np.float32)
+            if 'snv' in list(self.omics_data.keys()):
+                X_snv[i,] = self.omics_data['snv'].loc[celline_id].values.astype(np.float32)
+            if 'methylation' in list(self.omics_data.keys()): 
+                X_methylation[i,] = self.omics_data['methylation'].loc[celline_id].values.astype(np.float32)
+            X_rdkit2d[i,] = self.drug_data['rdkit2d'].loc[int(cid)].values.astype(np.float32)
+            X_fingerprint[i,] = self.drug_data['fingerprint'].loc[int(cid)].values.astype(np.float32)
+            # Store class
+            y[i] = self.labels[ID]
+            # print(X_cnv.shape, X_cnv.dtype, str(X_cnv))
+            # print(y.shape, y.dtype, str(y))
+
+        return (X_fingerprint, X_rdkit2d, X_cnv, X_expr, X_snv, X_methylation), y# keras.utils.to_categorical(y, num_classes=2)
+    
+    def __getitem__(self, index):
+        'Generate one batch of data'
+        # Generate indexes of the batch
+        indexes = self.indexes[index*self.batch_size:(index+1)*self.batch_size]
+
+        # Find list of IDs
+        sample_barcode_temp = [self.sample_barcode[k] for k in indexes]
+        
+
+        # Generate data
+        return self.__data_generation(sample_barcode_temp)
+    
+
+if __name__ == "__main__":
+    ds = Dataset()
+    train, test = ds.split(validation=False).values()
+    train_generator = DataGenerator(sample_barcode=train, **ds.get_config())
