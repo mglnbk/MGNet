@@ -34,19 +34,17 @@ class CalculateSimilarity(Layer):
     gamma = K.constant(value = 0.001)
     return K.exp(-gamma * K.sum(K.square(temp-inputs), axis=-1))
 
-  def compute_output_shape(self, input_shape):
-    return input_shape
-
 
 class multichannel_network(Model):
     def __init__(self,
-                 dataset,
+                 feature_contained = ['cnv', 'methylation', 'mutation', 'gene_expression'],
                  dropout=.5,
                  n_channels = 4
                  ):
         super().__init__(self)
         self.dropout_rate = dropout
-        self.ds = dataset
+        self.ds = Dataset(feature_contained=feature_contained)
+        self.ds.save()
         self.n_channels = n_channels
 
     def build(self, input_shape):
@@ -92,6 +90,15 @@ class multichannel_network(Model):
           self.gene_expression_dense2 = layers.Dense(units=128, activation='relu')
           self.gene_expression_bn2 = layers.BatchNormalization()
           self.gene_expression_dropout = layers.Dropout(rate = self.dropout_rate)
+        
+        # Gene Mutations
+        if 'mutation' in self.ds.feature_contained:
+          self.similarity_layer_mut = CalculateSimilarity(sample_matrix=self.ds.omics_data['mutation'])
+          self.mutations_dense1 = layers.Dense(units=512, activation='relu')
+          self.mutations_bn1 = layers.BatchNormalization()
+          self.mutations_dense2 = layers.Dense(units=128, activation='relu')
+          self.mutations_bn2 = layers.BatchNormalization()
+          self.mutations_dropout = layers.Dropout(rate = self.dropout_rate)
 
         # Methylation
         if 'methylation' in self.ds.feature_contained:
@@ -101,15 +108,6 @@ class multichannel_network(Model):
           self.methylation_dense2 = layers.Dense(units=128, activation='relu')
           self.methylation_bn2 = layers.BatchNormalization()
           self.methylation_dropout = layers.Dropout(rate = self.dropout_rate)
-
-        # Gene Mutations
-        if 'snv' in self.ds.feature_contained:
-          self.similarity_layer_mut = CalculateSimilarity(sample_matrix=self.ds.omics_data['snv'])
-          self.mutations_dense1 = layers.Dense(units=512, activation='relu')
-          self.mutations_bn1 = layers.BatchNormalization()
-          self.mutations_dense2 = layers.Dense(units=128, activation='relu')
-          self.mutations_bn2 = layers.BatchNormalization()
-          self.mutations_dropout = layers.Dropout(rate = self.dropout_rate)
 
         # Integration Layer
         self.concat = Concatenate()
@@ -169,7 +167,7 @@ class multichannel_network(Model):
           feature.append(g)
 
         # mutations
-        if 'snv' in self.ds.feature_contained:
+        if 'mutation' in self.ds.feature_contained:
           mut = self.similarity_layer_mut(inputs[4])
           mut = self.mutations_dense1(mut)
           mut = self.mutations_bn1(mut)
@@ -206,7 +204,7 @@ if __name__ == "__main__":
    fingerprint_input_shape = (10, 881)
    rdkit2d_input_shape = (10, 200)
    cnv_input_shape = (10, _model.ds.cnv.shape[1])
-   mutation_input_shape = (10, _model.ds.snv.shape[1])
+   mutation_input_shape = (10, _model.ds.mutation.shape[1])
    gene_expression_input_shape = (10, _model.ds.fpkm.shape[1])
    methylation_input_shape = (10, _model.ds.methylation.shape[1])
 

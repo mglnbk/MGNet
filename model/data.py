@@ -8,6 +8,7 @@ path = Path(__file__).parent.parent.absolute()
 sys.path.append(realpath(path)) # Project root folder
 from config_path import *
 from model.drug import Drug
+from os.path import join
 from model.utils import *
 from sklearn.model_selection import train_test_split
 
@@ -86,12 +87,12 @@ def load_data_methylation(data_path) -> pd.DataFrame:
     print("Loading Methylation Data Done")
     return met_df.T
 
-def load_data_snv(data_path) -> pd.DataFrame:
+def load_data_mutation(data_path) -> pd.DataFrame:
     print("Loading Mutations Data...")
-    snv_df = pd.read_csv(data_path, low_memory=False)
+    mutation_df = pd.read_csv(data_path, low_memory=False)
     important_only = ['cds_disrupted','complex_sub','downstream', 'ess_splice','frameshift','missense','nonsense','silent','splice_region','start_lost','stop_lost','upstream']
-    snv_df = snv_df[snv_df['effect'].isin(important_only)]
-    df_table = pd.pivot_table(data=snv_df, 
+    mutation_df = mutation_df[mutation_df['effect'].isin(important_only)]
+    df_table = pd.pivot_table(data=mutation_df, 
                                 index='model_name', 
                                 columns='gene_symbol', 
                                 values='effect',
@@ -126,8 +127,8 @@ class Dataset():
             self.fpkm = load_data_fpkm(RAW_FPKM_GDSC_PATH)
         if "methylation" in feature_contained:
             self.methylation = load_data_methylation(RAW_METHYLATION_GDSC_PATH)
-        if "snv" in feature_contained:
-            self.snv = load_data_snv(RAW_SNV_GDSC_PATH)
+        if "mutation" in feature_contained:
+            self.mutation = load_data_mutation(RAW_SNV_GDSC_PATH)
 
         self.drug_info = Drug(method='manual')
         # self.celline = load_data_celline(RAW_CELLINE_GDSC_PATH, "GDSC")
@@ -156,59 +157,7 @@ class Dataset():
             self.labels = {
                 _id:_y for _, (_id, _y) in enumerate(zip(self.response['SAMPLE_BARCODE'], self.processed_experiment[response]))
             }
-        # self.batch_size = batch_size
         self.sample_barcode = list(self.response['SAMPLE_BARCODE'])
-        # self.shuffle = shuffle
-        # self.on_epoch_end()
-
-    # def __len__(self):
-    #     'Denotes the number of batches per epoch'
-    #     return int(np.floor(len(self.sample_barcode) / self.batch_size))
-    
-    # def on_epoch_end(self):
-    #     'Updates indexes after each epoch'
-    #     self.indexes = np.arange(len(self.sample_barcode))
-    #     if self.shuffle == True:
-    #         np.random.shuffle(self.indexes)
-
-    # def __data_generation(self, sample_barcode_temp):
-    #     'Generates data containing batch_size samples' # X : (n_samples, *dim, n_channels)
-    #     # Initialization
-    #     X_cnv = np.empty((self.batch_size, self.cnv.shape[1]))
-    #     X_snv = np.empty((self.batch_size, self.snv.shape[1]))
-    #     X_expr = np.empty((self.batch_size, self.fpkm.shape[1]))
-    #     X_rdkit2d = np.empty((self.batch_size, 200))
-    #     X_methylation = np.empty((self.batch_size, self.methylation.shape[1]))
-    #     X_fingerprint = np.empty((self.batch_size, 881))
-    #     y = np.empty((self.batch_size), dtype=int)
-
-    #     # Generate data
-    #     for i, ID in enumerate(sample_barcode_temp):
-    #         # Store sample
-    #         celline_id, cid = ID.split("_")
-    #         X_cnv[i,] = self.cnv.loc[celline_id].values.astype(np.float32)
-    #         X_expr[i,] = self.fpkm.loc[celline_id].values.astype(np.float32)
-    #         X_snv[i,] = self.snv.loc[celline_id].values.astype(np.float32)
-    #         X_methylation[i,] = self.methylation.loc[celline_id].values.astype(np.float32)
-    #         X_rdkit2d[i,] = self.drug_info.drug_feature['rdkit2d'].loc[int(cid)].values.astype(np.float32)
-    #         X_fingerprint[i,] = self.drug_info.drug_feature['fingerprint'].loc[int(cid)].values.astype(np.float32)
-    #         # Store class
-    #         y[i] = self.labels[ID]
-    #         # print(X_cnv.shape, X_cnv.dtype, str(X_cnv))
-    #         # print(y.shape, y.dtype, str(y))
-
-    #     return (X_fingerprint, X_rdkit2d, X_cnv, X_expr, X_snv, X_methylation), y# keras.utils.to_categorical(y, num_classes=2)
-    
-    # def __getitem__(self, index):
-    #     'Generate one batch of data'
-    #     # Generate indexes of the batch
-    #     indexes = self.indexes[index*self.batch_size:(index+1)*self.batch_size]
-
-    #     # Find list of IDs
-    #     sample_barcode_temp = [self.sample_barcode[k] for k in indexes]
-
-    #     # Generate data
-    #     return self.__data_generation(sample_barcode_temp)
     
     def split(self, rate=0.1, validation=True):
         """split train and test(or validation) dataset
@@ -250,7 +199,7 @@ class Dataset():
         """get data and its configurations for generators
 
         Returns:
-            dict: "omics_dim": {"cnv": 123, "snv": 12312 ...}
+            dict: "omics_dim": {"cnv": 123, "mutation": 12312 ...}
                   "drug_dim": {"rdkit2d": 200, "fingerprint": 881}
                   "omics_data": {'cnv': pd.DataFrame....}
                   "drug_data": {'rdkit2d': pd.DataFrame, 'fingerprint': pd.DataFrame}
@@ -311,8 +260,8 @@ class Dataset():
             s['gene_expression'] = self.fpkm.loc[self.celline_barcode]
         if 'cnv' in self.feature_contained:
             s['cnv'] = self.cnv.loc[self.celline_barcode]
-        if 'snv' in self.feature_contained:
-            s['snv'] = self.snv.loc[self.celline_barcode]
+        if 'mutation' in self.feature_contained:
+            s['mutation'] = self.mutation.loc[self.celline_barcode]
         if 'methylation' in self.feature_contained:
             s['methylation'] = self.methylation.loc[self.celline_barcode]
         return s
@@ -334,8 +283,8 @@ class Dataset():
             slist.append(set(self.cnv.index))
         if "methylation" in self.feature_contained:
             slist.append(set(self.methylation.index))
-        if "snv" in self.feature_contained:
-            slist.append(set(self.snv.index))
+        if "mutation" in self.feature_contained:
+            slist.append(set(self.mutation.index))
         celline_barcode = list(s1.intersection(*slist))
         return celline_barcode
         
@@ -355,10 +304,10 @@ class Dataset():
             print("Methylation: ")
             print(self.omics_data['methylation'].shape)
             print(self.omics_data['methylation'].columns)
-        if "snv" in self.feature_contained:
+        if "mutation" in self.feature_contained:
             print("Mutation: ")
-            print(self.omics_data['snv'].shape)
-            print(self.omics_data['snv'].columns) 
+            print(self.omics_data['mutation'].shape)
+            print(self.omics_data['mutation'].columns) 
 
     def return_data(self) -> dict:
         return {
@@ -366,6 +315,23 @@ class Dataset():
             "response": self.response,
             "experiment": self.processed_experiment
         }
+    
+    def save(self):
+        cid_list = list(set(i.split('_')[1] for i in self.response['SAMPLE_BARCODE']))
+        for i in self.response['SAMPLE_BARCODE']:
+            celline_id, cid = i.split("_")
+            if 'cnv' in self.feature_contained:
+                np.save(join(CNV_SAVE_PATH, f"{celline_id}"), self.omics_data['cnv'].loc[celline_id].values.astype(np.float32))
+            if 'mutation' in self.feature_contained:
+                np.save(join(MUTATION_SAVE_PATH, f"{celline_id}"), self.omics_data['mutation'].loc[celline_id].values.astype(np.float32))
+            if 'gene_expression' in self.feature_contained:
+                np.save(join(EXPRESSION_SAVE_PATH, f"{celline_id}"), self.omics_data['gene_expression'].loc[celline_id].values.astype(np.float32))
+            if 'methylation' in self.feature_contained:
+                np.save(join(METHYLATION_SAVE_PATH, f"{celline_id}"), self.omics_data['methylation'].loc[celline_id].values.astype(np.float32))
+        for j in cid_list:
+            np.save(join(RDKIT2D_SAVE_PATH, j), self.drug_info.drug_feature['rdkit2d'].loc[int(j)].values.astype(np.float32))
+            np.save(join(FINGERPRINT_SAVE_PATH, j), self.drug_info.drug_feature['fingerprint'].loc[int(j)].values.astype(np.float32))
+
 
 
 
@@ -419,12 +385,12 @@ class DataGenerator(keras.utils.Sequence):
         if 'cnv' in list(self.omics_data.keys()):
             X_cnv = np.empty((self.batch_size, self.omics_dim['cnv']))
             omics_feature.append(X_cnv)
-        if 'snv' in list(self.omics_data.keys()):
-            X_snv = np.empty((self.batch_size, self.omics_dim['snv']))
-            omics_feature.append(X_snv)
         if 'gene_expression' in list(self.omics_data.keys()):
             X_expr = np.empty((self.batch_size, self.omics_dim['gene_expression']))
             omics_feature.append(X_expr)
+        if 'mutation' in list(self.omics_data.keys()):
+            X_mutation = np.empty((self.batch_size, self.omics_dim['mutation']))
+            omics_feature.append(X_mutation)
         if 'methylation' in list(self.omics_data.keys()): 
             X_methylation = np.empty((self.batch_size, self.omics_dim['methylation']))
             omics_feature.append(X_methylation)
@@ -437,15 +403,21 @@ class DataGenerator(keras.utils.Sequence):
             # Store sample
             celline_id, cid = ID.split("_")
             if 'cnv' in list(self.omics_data.keys()): 
-                X_cnv[i,] = self.omics_data['cnv'].loc[celline_id].values.astype(np.float32)
+                # X_cnv[i,] = self.omics_data['cnv'].loc[celline_id].values.astype(np.float32)
+                X_cnv[i,] = np.load(join(CNV_SAVE_PATH, f"{celline_id}.npy"))
             if 'gene_expression' in list(self.omics_data.keys()):
-                X_expr[i,] = self.omics_data['gene_expression'].loc[celline_id].values.astype(np.float32)
-            if 'snv' in list(self.omics_data.keys()):
-                X_snv[i,] = self.omics_data['snv'].loc[celline_id].values.astype(np.float32)
+                # X_expr[i,] = self.omics_data['gene_expression'].loc[celline_id].values.astype(np.float32)
+                X_expr[i,] = np.load(join(EXPRESSION_SAVE_PATH, f"{celline_id}.npy"))
+            if 'mutation' in list(self.omics_data.keys()):
+                # X_mutation[i,] = self.omics_data['mutation'].loc[celline_id].values.astype(np.float32)
+                X_mutation[i,] = np.load(join(MUTATION_SAVE_PATH, f"{celline_id}.npy")) 
             if 'methylation' in list(self.omics_data.keys()): 
-                X_methylation[i,] = self.omics_data['methylation'].loc[celline_id].values.astype(np.float32)
-            X_rdkit2d[i,] = self.drug_data['rdkit2d'].loc[int(cid)].values.astype(np.float32)
-            X_fingerprint[i,] = self.drug_data['fingerprint'].loc[int(cid)].values.astype(np.float32)
+                # X_methylation[i,] = self.omics_data['methylation'].loc[celline_id].values.astype(np.float32)
+                X_methylation[i,] = np.load(join(METHYLATION_SAVE_PATH, f"{celline_id}.npy")) 
+            # X_rdkit2d[i,] = self.drug_data['rdkit2d'].loc[int(cid)].values.astype(np.float32)
+            # X_fingerprint[i,] = self.drug_data['fingerprint'].loc[int(cid)].values.astype(np.float32)
+            X_rdkit2d[i,] = np.load(join(RDKIT2D_SAVE_PATH, f"{cid}.npy"))
+            X_fingerprint[i,] = np.load(join(FINGERPRINT_SAVE_PATH, f"{cid}.npy"))
             # Store class
             y[i] = self.labels[ID]
             # print(X_cnv.shape, X_cnv.dtype, str(X_cnv))
@@ -460,7 +432,6 @@ class DataGenerator(keras.utils.Sequence):
 
         # Find list of IDs
         sample_barcode_temp = [self.sample_barcode[k] for k in indexes]
-        
 
         # Generate data
         return self.__data_generation(sample_barcode_temp)

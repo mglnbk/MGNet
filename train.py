@@ -6,15 +6,14 @@ import datetime
 from model.nn import multichannel_network
 from model.data import Dataset, DataGenerator
 
-ds = Dataset()
-model = multichannel_network(dataset=ds)
+model = multichannel_network()
 
-batch_size = 128
+batch_size = 64
 epochs = 100
 
-train, test = ds.split(validation=False).values()
-train_generator = DataGenerator(sample_barcode=train, **ds.get_config(), batch_size=batch_size)
-test_generator = DataGenerator(sample_barcode=test, **ds.get_config(), batch_size=batch_size)
+train, test = model.ds.split(validation=False).values()
+train_generator = DataGenerator(sample_barcode=train, **model.ds.get_config(), batch_size=batch_size)
+test_generator = DataGenerator(sample_barcode=test, **model.ds.get_config(), batch_size=batch_size)
 
 
 

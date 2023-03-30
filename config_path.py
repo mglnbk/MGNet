@@ -27,7 +27,7 @@ RAW_DRUG_GDSC_PATH = realpath('data/processed_data/drugs/GDSC_SYNS2CIDS.txt')
 PROCESSED_FPKM_GDSC_PATH = realpath("data/processed_data/fpkm.csv")
 PROCESSED_CNV_GDSC_PATH = realpath("data/processed_data/cnv.csv")
 PROCESSED_METHYLATION_GDSC_PATH = realpath("data/processed_data/methylation.csv")
-PROCESSED_SNV_GDSC_PATH = realpath("data/processed_data/snv.csv")
+PROCESSED_SNV_GDSC_PATH = realpath("data/processed_data/mutation.csv")
 
 ## SCONDARY
 R_SCRIPT_PATH = realpath("./SNF_integration.R")
@@ -35,11 +35,19 @@ SIM_PATH = realpath("data/processed_data/simlilarity_matrix.csv")
 PUBCHEM_ID_SMILES_PATH = realpath("data/processed_data/drugs/pubchem_id-SMILES.csv")
 PRETRAINED_BETA_VAE_PATH = realpath("utils/drug-molecule-generation-with-VAE")
 
+## SAVE_PATH
+CNV_SAVE_PATH = realpath("data/feature/cnv/")
+FINGERPRINT_SAVE_PATH = realpath("data/feature/fingerprint/")
+EXPRESSION_SAVE_PATH = realpath("data/feature/gene_expression/")
+METHYLATION_SAVE_PATH = realpath("data/feature/methylation/")
+MUTATION_SAVE_PATH = realpath("data/feature/mutation/")
+RDKIT2D_SAVE_PATH = realpath("data/feature/rdkit2d/")
+
 # model parameters settings
 lr_rate = 1e-3
 dropout_rate = .5
 
-# choose from ['methylation', 'gene_expression', 'cnv', 'snv']
+# choose from ['methylation', 'gene_expression', 'cnv', 'mutation']
 feature_contained = ['gene_expression', 'cnv', 'methylation']
 
 # Choose from feature preprocessors ['SNF', 'Pretrained_beta-VAE', 'Pretrained_GCN', 'Transformer']
