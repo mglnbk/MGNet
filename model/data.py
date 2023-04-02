@@ -9,7 +9,6 @@ sys.path.append(realpath(path)) # Project root folder
 from config_path import *
 from model.drug import Drug
 from os.path import join
-from model.utils import *
 from sklearn.model_selection import train_test_split
 
 # 注：min-Max归一化需要在分割完训练集和测试集和Validation set之后再进行

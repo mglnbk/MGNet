@@ -76,7 +76,6 @@ def smiles_to_graph(smiles):
 
     return adjacency, features
 
-
 def graph_to_molecule(graph):
     # Unpack graph
     adjacency, features = graph
