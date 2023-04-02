@@ -43,8 +43,8 @@ class multichannel_network(Model):
                  ):
         super().__init__(self)
         self.dropout_rate = dropout
-        self.ds = Dataset(feature_contained=feature_contained)
-        self.ds.save()
+        self.ds = Dataset(feature_contained=feature_contained, response='IN_IC50')
+        # self.ds.save()
         self.n_channels = n_channels
 
     def build(self, input_shape):
@@ -116,7 +116,6 @@ class multichannel_network(Model):
         self.integration_dense2 = Dense(128, activation='relu')
         self.intergration_bn2 = BatchNormalization()
         self.integration_dense3 = Dense(1, activation='sigmoid')
-
 
     def call(self, inputs):
         

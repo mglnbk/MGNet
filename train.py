@@ -6,24 +6,31 @@ import datetime
 from model.nn import multichannel_network
 from model.data import Dataset, DataGenerator
 
-model = multichannel_network()
+model = multichannel_network(feature_contained=['cnv', 'methylation', 'mutation', 'gene_expression'],
+                             dropout=.5,
+                             n_channels=2)
 
 batch_size = 64
-epochs = 100
+epochs = 10
 
-train, test = model.ds.split(validation=False).values()
+
+# Split train, test and validation set for training and testing
+partition = model.ds.split(validation=True)
+train = partition['train']
+test = partition['test']
+validation = partition['validation']
+
+
 train_generator = DataGenerator(sample_barcode=train, **model.ds.get_config(), batch_size=batch_size)
+validation_generator = DataGenerator(sample_barcode=validation, **model.get_config(), batch_size=batch_size)
 test_generator = DataGenerator(sample_barcode=test, **model.ds.get_config(), batch_size=batch_size)
 
-
-
-# 64 100 0.85
 
 log_dir = "logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
 
 def scheduler(epoch, lr):
-    if(epoch % 50 ==0 and epoch !=0):
+    if(epoch % 5 ==0 and epoch !=0):
         return lr*0.1
     else:
         return lr
@@ -32,7 +39,7 @@ reduce_lr = LearningRateScheduler(scheduler)
 #                               patience=5, min_lr=0.001)
 early_stop = EarlyStopping(monitor='val_loss', patience=10)
 
-model.compile(optimizer=tf.keras.optimizers.Adam(),
+model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.01),
               loss=tf.keras.losses.BinaryCrossentropy(),
               metrics=
               [
@@ -43,8 +50,11 @@ model.compile(optimizer=tf.keras.optimizers.Adam(),
               ]
             )
 
-model.fit(x=train_generator, 
-          epochs=epochs,
-          validation_data=test_generator, 
-          callbacks=[reduce_lr, early_stop]
-          )
+history = model.fit(x=train_generator, 
+                    epochs=epochs,
+                    validation_data=validation_generator, 
+                    callbacks=[reduce_lr, early_stop]
+                    )
+
+model.evaluate(x=test_generator) 
+

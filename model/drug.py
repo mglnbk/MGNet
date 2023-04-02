@@ -5,14 +5,16 @@ import sys
 from keras.models import load_model
 import ast
 from rdkit import Chem, RDLogger
-from DeepPurpose import CompoundPred as models
-from DeepPurpose.utils import smiles2pubchem, smiles2rdkit2d
-from DeepPurpose.dataset import *
+try:
+	from descriptastorus.descriptors import rdDescriptors, rdNormalizedDescriptors
+except:
+	raise ImportError("Please install pip install git+https://github.com/bp-kelley/descriptastorus and pip install pandas-flavor")
 from rdkit.Chem import BondType
 from pathlib import Path
 from os.path import realpath
 path = Path(__file__).parent.parent.absolute()
 sys.path.append(realpath(path)) # Project root folder
+from utils.pybiomed import calcPubChemFingerAll
 from config_path import *
 
 
@@ -113,6 +115,25 @@ def graph_to_molecule(graph):
 
     return molecule
 
+def smiles2rdkit2d(s):    
+    try:
+        generator = rdNormalizedDescriptors.RDKit2DNormalized()
+        features = np.array(generator.process(s)[1:])
+        NaNs = np.isnan(features)
+        features[NaNs] = 0
+    except:
+        print('descriptastorus not found this smiles: ' + s + ' convert to all 0 features')
+        features = np.zeros((200, ))
+    return np.array(features)
+
+def smiles2pubchem(s):
+	try:
+		features = calcPubChemFingerAll(s)
+	except:
+		print('pubchem fingerprint not working for smiles: ' + s + ' convert to 0 vectors')
+		features = np.zeros((881, ))
+	return np.array(features)
+
 def get_drug_feature(method):
     df = pd.read_csv(PUBCHEM_ID_SMILES_PATH)
     df.drop_duplicates(subset=['CID'], inplace=True)
@@ -150,7 +171,6 @@ def get_drug_feature(method):
                 "fingerprint": drug_fingerprint_df, 
                 "rdkit2d": drug_rdkit_2d_normalized_df
                 }
-
 
 # CIDs are all extracted from PubChem Id Convertors
 class Drug:

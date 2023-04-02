@@ -55,9 +55,3 @@ gene_feature_extractor = ['SNF', 'Transformer']
 
 # choose from ['Pretrained_beta-VAE', 'Pretrained_GCN'] 
 drug_feature_extractor = ['Pretrained_beta-VAE', 'Pretrained_GCN']
-
-
-if __name__ == '__main__':
-    import pandas as pd
-
-    print(pd.read_csv(PUBCHEM_ID_SMILES_PATH).columns)

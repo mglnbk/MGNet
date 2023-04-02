@@ -82,10 +82,11 @@ def load_data_methylation(data_path) -> pd.DataFrame:
     temp['Sentrix_Barcode'] = list("_".join([i,j]) for i, j in zip(temp['Sentrix_ID'].astype(str), temp['Sentrix_Position']))
     tb = dict(zip(temp['Sentrix_Barcode'], temp['Sample_Name']))
     met_df.rename(columns=tb, inplace=True)
+    met_df = met_df.T
     met_df = met_df.reset_index().drop_duplicates(subset='index', keep='first').rename(columns={'index': 'celline'})
     met_df = met_df.set_index('celline')
     print("Loading Methylation Data Done")
-    return met_df.T
+    return met_df
 
 def load_data_mutation(data_path) -> pd.DataFrame:
     print("Loading Mutations Data...")
@@ -115,10 +116,13 @@ class Dataset():
                 #  batch_size = 32,
                 #  shuffle = True,
                  set_label = True,
-                 response = 'AUC' # 'LN_IC50'
+                 response = 'AUC', # 'LN_IC50'
+                 threshold = 0.4
                  ):
         self.feature_contained = feature_contained
         self.dataset = dataset
+        self.target = response
+        self.threshold = threshold
 
         # load multi-omics data
         if "cnv" in feature_contained:
@@ -140,13 +144,13 @@ class Dataset():
 
         # Then preprocess omics data and response
         self.omics_data = self.preprocess_omics()
-        self.response = self.prepare_response(res=response) # pd.DataFrame
+        self.response = self.prepare_response(res=self.target) # pd.DataFrame
 
         # Prepare keras dataset configurations, for training
         if set_label:
             y = []
-            for i in self.processed_experiment[response]:
-                if (i<=0.9):
+            for i in self.processed_experiment[self.target]:
+                if (i<=self.threshold):
                     y.append(1)
                 else:
                     y.append(0)
@@ -155,11 +159,11 @@ class Dataset():
             }
         else:
             self.labels = {
-                _id:_y for _, (_id, _y) in enumerate(zip(self.response['SAMPLE_BARCODE'], self.processed_experiment[response]))
+                _id:_y for _, (_id, _y) in enumerate(zip(self.response['SAMPLE_BARCODE'], self.processed_experiment[self.target]))
             }
         self.sample_barcode = list(self.response['SAMPLE_BARCODE'])
     
-    def split(self, rate=0.1, validation=True):
+    def split(self, rate=0.1, validation=True, seed = 42):
         """split train and test(or validation) dataset
 
         Args:
@@ -172,10 +176,10 @@ class Dataset():
         if validation==True:
             sample_train, sample_test = train_test_split(self.sample_barcode,
                                                          test_size=rate*2,
-                                                         random_state=42)
+                                                         random_state=seed)
             sample_test, sample_validation = train_test_split(sample_test,
                                                               test_size=.5,
-                                                              random_state=42)
+                                                              random_state=seed)
             partition = {
                 "train": sample_train,
                 "test": sample_test,
@@ -185,7 +189,7 @@ class Dataset():
         else:
             sample_train, sample_test = train_test_split(self.sample_barcode,
                                                          test_size=rate,
-                                                         random_state=42)
+                                                         random_state=seed)
             partition = {
                 "train": sample_train,
                 "test": sample_test,
@@ -233,22 +237,26 @@ class Dataset():
         print("Create Unique Sample Barcode...")
         sample_barcode = [f"{i[0]}_{i[1]}" for i in zip(all_experiment['CELL_LINE_NAME'], all_experiment['CID'])]
         all_experiment['SAMPLE_BARCODE'] = sample_barcode
+
+        # Normalization if needed
+        all_experiment[self.target]=(all_experiment[self.target]-all_experiment[self.target].min())/(all_experiment[self.target].max()-all_experiment[self.target].min())
         
-        # exclude outliers
+        # Exclude outliers
         print("Exclude response value...")
-        ln_ic50 = all_experiment['AUC'].values
-        df = pd.DataFrame(ln_ic50)
+        target = all_experiment[self.target].values
+        df = pd.DataFrame(target)
 
         lower, median, upper = df.quantile([0.15,0.5,0.85]).values
         IQR = upper - lower
         lower_limit = lower - 1.5*IQR
         upper_limit = upper + 1.5*IQR
 
-        all_experiment.loc[(all_experiment['AUC'] < upper_limit.data) &
-                        (all_experiment['AUC'] > lower_limit.data)]
+        all_experiment.loc[(all_experiment[self.target] < upper_limit.data) &
+                        (all_experiment[self.target] > lower_limit.data)]
 
         all_experiment.reset_index(drop=True, inplace=True)
-        # 同时也要更新一下celline-barcode
+
+        # Update celline_barcode after exclusion
         self.celline_barcode = list(set(all_experiment['CELL_LINE_NAME']).intersection(self.celline_barcode))
         print("Experiment Done!")
 
@@ -333,8 +341,6 @@ class Dataset():
             np.save(join(FINGERPRINT_SAVE_PATH, j), self.drug_info.drug_feature['fingerprint'].loc[int(j)].values.astype(np.float32))
 
 
-
-
 class DataGenerator(keras.utils.Sequence):
     """DataGenerator, receive Dataset object and create generator used for model.fit
 
@@ -403,21 +409,21 @@ class DataGenerator(keras.utils.Sequence):
             # Store sample
             celline_id, cid = ID.split("_")
             if 'cnv' in list(self.omics_data.keys()): 
-                # X_cnv[i,] = self.omics_data['cnv'].loc[celline_id].values.astype(np.float32)
-                X_cnv[i,] = np.load(join(CNV_SAVE_PATH, f"{celline_id}.npy"))
+                X_cnv[i,] = self.omics_data['cnv'].loc[celline_id].values.astype(np.float32)
+                # X_cnv[i,] = np.load(join(CNV_SAVE_PATH, f"{celline_id}.npy"))
             if 'gene_expression' in list(self.omics_data.keys()):
-                # X_expr[i,] = self.omics_data['gene_expression'].loc[celline_id].values.astype(np.float32)
-                X_expr[i,] = np.load(join(EXPRESSION_SAVE_PATH, f"{celline_id}.npy"))
+                X_expr[i,] = self.omics_data['gene_expression'].loc[celline_id].values.astype(np.float32)
+                # X_expr[i,] = np.load(join(EXPRESSION_SAVE_PATH, f"{celline_id}.npy"))
             if 'mutation' in list(self.omics_data.keys()):
-                # X_mutation[i,] = self.omics_data['mutation'].loc[celline_id].values.astype(np.float32)
-                X_mutation[i,] = np.load(join(MUTATION_SAVE_PATH, f"{celline_id}.npy")) 
+                X_mutation[i,] = self.omics_data['mutation'].loc[celline_id].values.astype(np.float32)
+                # X_mutation[i,] = np.load(join(MUTATION_SAVE_PATH, f"{celline_id}.npy")) 
             if 'methylation' in list(self.omics_data.keys()): 
-                # X_methylation[i,] = self.omics_data['methylation'].loc[celline_id].values.astype(np.float32)
-                X_methylation[i,] = np.load(join(METHYLATION_SAVE_PATH, f"{celline_id}.npy")) 
-            # X_rdkit2d[i,] = self.drug_data['rdkit2d'].loc[int(cid)].values.astype(np.float32)
-            # X_fingerprint[i,] = self.drug_data['fingerprint'].loc[int(cid)].values.astype(np.float32)
-            X_rdkit2d[i,] = np.load(join(RDKIT2D_SAVE_PATH, f"{cid}.npy"))
-            X_fingerprint[i,] = np.load(join(FINGERPRINT_SAVE_PATH, f"{cid}.npy"))
+                X_methylation[i,] = self.omics_data['methylation'].loc[celline_id].values.astype(np.float32)
+                # X_methylation[i,] = np.load(join(METHYLATION_SAVE_PATH, f"{celline_id}.npy")) 
+            X_rdkit2d[i,] = self.drug_data['rdkit2d'].loc[int(cid)].values.astype(np.float32)
+            X_fingerprint[i,] = self.drug_data['fingerprint'].loc[int(cid)].values.astype(np.float32)
+            #X_rdkit2d[i,] = np.load(join(RDKIT2D_SAVE_PATH, f"{cid}.npy"))
+            #X_fingerprint[i,] = np.load(join(FINGERPRINT_SAVE_PATH, f"{cid}.npy"))
             # Store class
             y[i] = self.labels[ID]
             # print(X_cnv.shape, X_cnv.dtype, str(X_cnv))
