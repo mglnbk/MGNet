@@ -9,7 +9,7 @@ sys.path.append(realpath(path)) # Project root folder
 from config_path import *
 from model.drug import Drug
 from os.path import join
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, StratifiedKFold
 import h5py
 
 # 注：min-Max归一化需要在分割完训练集和测试集和Validation set之后再进行
@@ -194,9 +194,30 @@ class Dataset():
             }
             return partition
         
-    def k_fold(self):
-        pass  
-    
+    def k_fold(self, k, seed=42):
+        """return k-fold sample_barcode list, Note that k cant be
+            greater than number of samples in each class
+
+        Args:
+            k (int): k fold
+            seed (int, optional): _description_. Defaults to 42.
+
+        Returns:
+            dict: {
+                fold_1: {train: ['12', ...], test: ['RCV12', ...]},
+                fold_2: ... 
+            }
+        """
+        skf = StratifiedKFold(n_splits=k)
+        partition = {}
+        for i, (train_index, test_index) in enumerate(skf.split(np.zeros(len(self.labels)), list(self.labels.values()))):
+            partition[f'fold_{i}'] = {
+                "train": list(self.response.iloc[train_index]['SAMPLE_BARCODE']),
+                "test": list(self.response.iloc[test_index]['SAMPLE_BARCODE'])
+            }
+        np.save(CV_SPLIT_PATH, partition)
+        return partition
+
     def get_config(self):
         """get data and its configurations for generators
 

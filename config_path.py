@@ -38,5 +38,5 @@ PRETRAINED_BETA_VAE_PATH = realpath("utils/drug-molecule-generation-with-VAE")
 ## SAVE_PATH
 HDF5_SAVE_PATH = realpath("data/processed_data/dataset.h5")
 MODEL_PATH = realpath("./")
-
-
+CV_SPLIT_PATH = realpath("data/processed_data/split/cv.npy")
+RESULT_PATH = realpath("result/")

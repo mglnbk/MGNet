@@ -33,7 +33,6 @@ class CalculateSimilarity(Layer):
     gamma = K.constant(value = 0.001)
     return K.exp(-gamma * K.sum(K.square(temp-inputs), axis=-1))
 
-
 class multichannel_network(Model):
     def __init__(self,
                  dataset,

@@ -1,9 +1,7 @@
 data/
-.RData
+logs/
 .ipynb_checkpoints
-utils/
 __pycache__/
-test.hdf5
 model/__pycache__/
 model/__pycache__/data.cpython-310.pyc
 .Rproj.user
