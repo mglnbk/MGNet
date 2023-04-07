@@ -1,17 +1,18 @@
 # MGNet
 For undergraduate thesis design
 
-1. 除去Outlier
-2. 加入甲基化数据
-3. 加入体细胞突变数据
-4. 药物数据CTRP
-5. 对训练集和数据集分别作Min-Max归一化
-6. 增添一组Validation实验
-7. 增添一个feature ablation实验
-8. 增添一个对一种特定药物的重定位的研究实验
-9. 对不同类型特征的重要性分析，可以做消融实验
-10. 可以对药物进行聚类分析，聚类分析后看看该模型对那些药物敏感性更好
-11. 最后除了分类还可以进行回归任务，再进行分析 regression versus classification
+1. 除去Outlier: Done
+2. 加入甲基化数据: Done
+3. 加入体细胞突变数据: Done
+4. 药物数据CTRP: Done
+5. 对训练集和数据集分别作Min-Max归一化: Done
+6. 增添一组Validation实验: Done
+7. 增添一个feature ablation实验: WIP
+8. 增添一个对一种特定药物的重定位的研究实验: WIP
+9. 对不同类型特征的重要性分析，可以做消融实验: WIP
+11. 最后除了分类还可以进行回归任务，再进行分析 regression versus classification: Issues
+12. Rank the drug tested for a specific drug
+13. 可以对药物进行聚类分析，聚类分析后看看该模型对那些药物敏感性更好
 
 
 Download URL Instruction
