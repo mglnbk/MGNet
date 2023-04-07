@@ -22,7 +22,7 @@ validation = partition['validation']
 
 
 train_generator = DataGenerator(sample_barcode=train, **model.ds.get_config(), batch_size=batch_size)
-validation_generator = DataGenerator(sample_barcode=validation, **model.get_config(), batch_size=batch_size)
+validation_generator = DataGenerator(sample_barcode=validation, **model.ds.get_config(), batch_size=batch_size)
 test_generator = DataGenerator(sample_barcode=test, **model.ds.get_config(), batch_size=batch_size)
 
 

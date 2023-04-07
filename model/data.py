@@ -10,6 +10,7 @@ from config_path import *
 from model.drug import Drug
 from os.path import join
 from sklearn.model_selection import train_test_split
+import h5py
 
 # 注：min-Max归一化需要在分割完训练集和测试集和Validation set之后再进行
 
@@ -112,8 +113,6 @@ class Dataset():
     def __init__(self, 
                  feature_contained = ['cnv', 'gene_expression'], 
                  dataset = 'GDSC',
-                #  batch_size = 32,
-                #  shuffle = True,
                  set_label = True,
                  response = 'AUC', # 'LN_IC50'
                  threshold = 0.4
@@ -324,22 +323,36 @@ class Dataset():
         }
     
     def save(self):
+        print("Save the dataset into hdf5 data format...")
         cid_list = list(set(i.split('_')[1] for i in self.response['SAMPLE_BARCODE']))
-        for i in self.response['SAMPLE_BARCODE']:
-            celline_id, cid = i.split("_")
-            if 'cnv' in self.feature_contained:
-                np.save(join(CNV_SAVE_PATH, f"{celline_id}"), self.omics_data['cnv'].loc[celline_id].values.astype(np.float32))
-            if 'mutation' in self.feature_contained:
-                np.save(join(MUTATION_SAVE_PATH, f"{celline_id}"), self.omics_data['mutation'].loc[celline_id].values.astype(np.float32))
+        cid_list = [int(i) for i in cid_list]
+        celline_id = list(set(i.split('_')[0] for i in self.response['SAMPLE_BARCODE']))
+        with h5py.File(HDF5_SAVE_PATH, 'w') as ds:
+            if 'cnv' in self.feature_contained: 
+                cnv=ds.create_group(name='cnv')
             if 'gene_expression' in self.feature_contained:
-                np.save(join(EXPRESSION_SAVE_PATH, f"{celline_id}"), self.omics_data['gene_expression'].loc[celline_id].values.astype(np.float32))
+                gene_expression=ds.create_group(name='gene_expression')
+            if 'mutation' in self.feature_contained:
+                mutation=ds.create_group(name='mutation')
             if 'methylation' in self.feature_contained:
-                np.save(join(METHYLATION_SAVE_PATH, f"{celline_id}"), self.omics_data['methylation'].loc[celline_id].values.astype(np.float32))
-        for j in cid_list:
-            np.save(join(RDKIT2D_SAVE_PATH, j), self.drug_info.drug_feature['rdkit2d'].loc[int(j)].values.astype(np.float32))
-            np.save(join(FINGERPRINT_SAVE_PATH, j), self.drug_info.drug_feature['fingerprint'].loc[int(j)].values.astype(np.float32))
-
-
+                methylation=ds.create_group(name='methylation')
+            rdkit2d = ds.create_group(name='rdkit2d')
+            fingerprint = ds.create_group(name='fingerprint')
+            
+            for i in celline_id:
+                if 'cnv' in self.feature_contained:
+                    cnv.create_dataset(name=i, data=self.omics_data['cnv'].loc[i].values, dtype=np.float16)
+                if 'gene_expression' in self.feature_contained:
+                    gene_expression.create_dataset(name=i, data=self.omics_data['gene_expression'].loc[i].values, dtype=np.float16)
+                if 'mutation' in self.feature_contained:
+                    mutation.create_dataset(name=i, data=self.omics_data['mutation'].loc[i].values, dtype=np.float16)
+                if 'methylation' in self.feature_contained:
+                    methylation.create_dataset(name=i, data=self.omics_data['methylation'].loc[i].values, dtype=np.float16)
+            for j in cid_list:
+                rdkit2d.create_dataset(name=str(j), data=self.drug_info.drug_feature['rdkit2d'].loc[j].values, dtype=np.float16)
+                fingerprint.create_dataset(name=str(j), data=self.drug_info.drug_feature['fingerprint'].loc[j].values, dtype=np.float16)
+            print("Done!")
+        
 class DataGenerator(keras.utils.Sequence):
     """DataGenerator, receive Dataset object and create generator used for model.fit
 
@@ -403,28 +416,37 @@ class DataGenerator(keras.utils.Sequence):
         y = np.empty((self.batch_size), dtype=int)
 
         # Generate data
+
+        with h5py.File(HDF5_SAVE_PATH, mode='r') as ds:
         
-        for i, ID in enumerate(sample_barcode_temp):
+            for i, ID in enumerate(sample_barcode_temp):
             # Store sample
-            celline_id, cid = ID.split("_")
-            if 'cnv' in list(self.omics_data.keys()): 
-                X_cnv[i,] = self.omics_data['cnv'].loc[celline_id].values.astype(np.float32)
+                celline_id, cid = ID.split("_")
+                if 'cnv' in list(self.omics_data.keys()): 
+                #X_cnv[i,] = self.omics_data['cnv'].loc[celline_id].values.astype(np.float32)
+                    X_cnv[i,] = ds['cnv'][celline_id][()]
                 # X_cnv[i,] = np.load(join(CNV_SAVE_PATH, f"{celline_id}.npy"))
-            if 'gene_expression' in list(self.omics_data.keys()):
-                X_expr[i,] = self.omics_data['gene_expression'].loc[celline_id].values.astype(np.float32)
+                if 'gene_expression' in list(self.omics_data.keys()):
+                #X_expr[i,] = self.omics_data['gene_expression'].loc[celline_id].values.astype(np.float32)
+                    X_expr[i,] = ds['gene_expression'][celline_id][()] 
                 # X_expr[i,] = np.load(join(EXPRESSION_SAVE_PATH, f"{celline_id}.npy"))
-            if 'mutation' in list(self.omics_data.keys()):
-                X_mutation[i,] = self.omics_data['mutation'].loc[celline_id].values.astype(np.float32)
+                if 'mutation' in list(self.omics_data.keys()):
+                #X_mutation[i,] = self.omics_data['mutation'].loc[celline_id].values.astype(np.float32)
+                    X_mutation[i,] = ds['mutation'][celline_id][()]
                 # X_mutation[i,] = np.load(join(MUTATION_SAVE_PATH, f"{celline_id}.npy")) 
-            if 'methylation' in list(self.omics_data.keys()): 
-                X_methylation[i,] = self.omics_data['methylation'].loc[celline_id].values.astype(np.float32)
+                if 'methylation' in list(self.omics_data.keys()): 
+                # X_methylation[i,] = self.omics_data['methylation'].loc[celline_id].values.astype(np.float32)
+                    X_methylation[i,] = ds['methylation'][celline_id][()]
                 # X_methylation[i,] = np.load(join(METHYLATION_SAVE_PATH, f"{celline_id}.npy")) 
-            X_rdkit2d[i,] = self.drug_data['rdkit2d'].loc[int(cid)].values.astype(np.float32)
-            X_fingerprint[i,] = self.drug_data['fingerprint'].loc[int(cid)].values.astype(np.float32)
+            #X_rdkit2d[i,] = self.drug_data['rdkit2d'].loc[int(cid)].values.astype(np.float32)
+                X_rdkit2d[i,] = ds['rdkit2d'][cid][()]
+            #X_fingerprint[i,] = self.drug_data['fingerprint'].loc[int(cid)].values.astype(np.float32)
+                X_fingerprint[i,] = ds['fingerprint'][cid][()]
             #X_rdkit2d[i,] = np.load(join(RDKIT2D_SAVE_PATH, f"{cid}.npy"))
             #X_fingerprint[i,] = np.load(join(FINGERPRINT_SAVE_PATH, f"{cid}.npy"))
             # Store class
-            y[i] = self.labels[ID]
+        
+        y[i] = self.labels[ID]
             # print(X_cnv.shape, X_cnv.dtype, str(X_cnv))
             # print(y.shape, y.dtype, str(y))
 

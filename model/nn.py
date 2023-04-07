@@ -43,8 +43,8 @@ class multichannel_network(Model):
                  ):
         super().__init__(self)
         self.dropout_rate = dropout
-        self.ds = Dataset(feature_contained=feature_contained, response='IN_IC50')
-        # self.ds.save()
+        self.ds = Dataset(feature_contained=feature_contained, response='AUC')
+        self.ds.save()
         self.n_channels = n_channels
 
     def build(self, input_shape):

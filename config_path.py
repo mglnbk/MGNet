@@ -42,6 +42,7 @@ EXPRESSION_SAVE_PATH = realpath("data/feature/gene_expression/")
 METHYLATION_SAVE_PATH = realpath("data/feature/methylation/")
 MUTATION_SAVE_PATH = realpath("data/feature/mutation/")
 RDKIT2D_SAVE_PATH = realpath("data/feature/rdkit2d/")
+HDF5_SAVE_PATH = realpath("data/processed_data/dataset.h5")
 
 # model parameters settings
 lr_rate = 1e-3
