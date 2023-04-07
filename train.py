@@ -7,11 +7,18 @@ from model.nn import multichannel_network
 from model.data import Dataset, DataGenerator
 from config_path import FEATURE
 
+# model parameters settings
+lr_rate = 1e-3
+dropout_rate = .5
+
+# choose from ['methylation', 'gene_expression', 'cnv', 'mutation']
+FEATURE = ['gene_expression', 'cnv', 'methylation', 'mutation']
+
 ds = Dataset(feature_contained=FEATURE)
 model = multichannel_network(
     dataset=ds,
     dropout=.5
-            )
+    )
 
 batch_size = 64
 epochs = 10
