@@ -237,7 +237,7 @@ class Dataset():
         all_experiment['SAMPLE_BARCODE'] = sample_barcode
 
         # Normalization if needed
-        if self.target == "LN_IC50":
+        if self.target == "LN_IC50" or self.dataset == "CTRP":
             all_experiment[self.target]=(all_experiment[self.target]-all_experiment[self.target].min())/(all_experiment[self.target].max()-all_experiment[self.target].min())
         
         # Exclude outliers

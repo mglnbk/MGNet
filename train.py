@@ -5,7 +5,6 @@ from keras.metrics import Precision, Recall
 import datetime
 from model.nn import multichannel_network
 from model.data import Dataset, DataGenerator
-from config_path import FEATURE
 
 # model parameters settings
 lr_rate = 1e-3
@@ -14,7 +13,7 @@ dropout_rate = .5
 # choose from ['methylation', 'gene_expression', 'cnv', 'mutation']
 FEATURE = ['gene_expression', 'cnv', 'methylation', 'mutation']
 
-ds = Dataset(feature_contained=FEATURE)
+ds = Dataset(feature_contained=FEATURE, dataset='GDSC', set_label=True, response='AUC', threshold=.4)
 model = multichannel_network(
     dataset=ds,
     dropout=.5
@@ -49,7 +48,7 @@ reduce_lr = LearningRateScheduler(scheduler)
 #                               patience=5, min_lr=0.001)
 early_stop = EarlyStopping(monitor='val_loss', patience=10)
 
-model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.0001),
+model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.01),
               loss=tf.keras.losses.BinaryCrossentropy(),
               metrics=
               [
