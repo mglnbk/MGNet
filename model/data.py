@@ -237,7 +237,8 @@ class Dataset():
         all_experiment['SAMPLE_BARCODE'] = sample_barcode
 
         # Normalization if needed
-        all_experiment[self.target]=(all_experiment[self.target]-all_experiment[self.target].min())/(all_experiment[self.target].max()-all_experiment[self.target].min())
+        if self.target == "LN_IC50":
+            all_experiment[self.target]=(all_experiment[self.target]-all_experiment[self.target].min())/(all_experiment[self.target].max()-all_experiment[self.target].min())
         
         # Exclude outliers
         print("Exclude response value...")
@@ -341,16 +342,16 @@ class Dataset():
             
             for i in celline_id:
                 if 'cnv' in self.feature_contained:
-                    cnv.create_dataset(name=i, data=self.omics_data['cnv'].loc[i].values, dtype=np.float16)
+                    cnv.create_dataset(name=i, data=self.omics_data['cnv'].loc[i].values, dtype=np.float32)
                 if 'gene_expression' in self.feature_contained:
-                    gene_expression.create_dataset(name=i, data=self.omics_data['gene_expression'].loc[i].values, dtype=np.float16)
+                    gene_expression.create_dataset(name=i, data=self.omics_data['gene_expression'].loc[i].values, dtype=np.float32)
                 if 'mutation' in self.feature_contained:
-                    mutation.create_dataset(name=i, data=self.omics_data['mutation'].loc[i].values, dtype=np.float16)
+                    mutation.create_dataset(name=i, data=self.omics_data['mutation'].loc[i].values, dtype=np.float32)
                 if 'methylation' in self.feature_contained:
-                    methylation.create_dataset(name=i, data=self.omics_data['methylation'].loc[i].values, dtype=np.float16)
+                    methylation.create_dataset(name=i, data=self.omics_data['methylation'].loc[i].values, dtype=np.float32)
             for j in cid_list:
-                rdkit2d.create_dataset(name=str(j), data=self.drug_info.drug_feature['rdkit2d'].loc[j].values, dtype=np.float16)
-                fingerprint.create_dataset(name=str(j), data=self.drug_info.drug_feature['fingerprint'].loc[j].values, dtype=np.float16)
+                rdkit2d.create_dataset(name=str(j), data=self.drug_info.drug_feature['rdkit2d'].loc[j].values, dtype=np.float32)
+                fingerprint.create_dataset(name=str(j), data=self.drug_info.drug_feature['fingerprint'].loc[j].values, dtype=np.float32)
             print("Done!")
         
 class DataGenerator(keras.utils.Sequence):
@@ -396,21 +397,21 @@ class DataGenerator(keras.utils.Sequence):
         'Generates data containing batch_size samples' # X : (n_samples, *dim, n_channels)
         # Initialization
         omics_feature = []
-        X_rdkit2d = np.empty((self.batch_size, self.drug_dim['rdkit2d']))
-        X_fingerprint = np.empty((self.batch_size, self.drug_dim['fingerprint']))
+        X_rdkit2d = np.empty((self.batch_size, self.drug_dim['rdkit2d']), dtype=np.float32)
+        X_fingerprint = np.empty((self.batch_size, self.drug_dim['fingerprint']), dtype=np.float32)
         omics_feature.append(X_fingerprint)
         omics_feature.append(X_rdkit2d)
         if 'cnv' in list(self.omics_data.keys()):
-            X_cnv = np.empty((self.batch_size, self.omics_dim['cnv']))
+            X_cnv = np.empty((self.batch_size, self.omics_dim['cnv']), dtype=np.float32)
             omics_feature.append(X_cnv)
         if 'gene_expression' in list(self.omics_data.keys()):
-            X_expr = np.empty((self.batch_size, self.omics_dim['gene_expression']))
+            X_expr = np.empty((self.batch_size, self.omics_dim['gene_expression']), dtype=np.float32)
             omics_feature.append(X_expr)
         if 'mutation' in list(self.omics_data.keys()):
-            X_mutation = np.empty((self.batch_size, self.omics_dim['mutation']))
+            X_mutation = np.empty((self.batch_size, self.omics_dim['mutation']), dtype=np.float32)
             omics_feature.append(X_mutation)
         if 'methylation' in list(self.omics_data.keys()): 
-            X_methylation = np.empty((self.batch_size, self.omics_dim['methylation']))
+            X_methylation = np.empty((self.batch_size, self.omics_dim['methylation']), dtype=np.float32)
             omics_feature.append(X_methylation)
         
         y = np.empty((self.batch_size), dtype=int)
@@ -423,32 +424,17 @@ class DataGenerator(keras.utils.Sequence):
             # Store sample
                 celline_id, cid = ID.split("_")
                 if 'cnv' in list(self.omics_data.keys()): 
-                #X_cnv[i,] = self.omics_data['cnv'].loc[celline_id].values.astype(np.float32)
                     X_cnv[i,] = ds['cnv'][celline_id][()]
-                # X_cnv[i,] = np.load(join(CNV_SAVE_PATH, f"{celline_id}.npy"))
                 if 'gene_expression' in list(self.omics_data.keys()):
-                #X_expr[i,] = self.omics_data['gene_expression'].loc[celline_id].values.astype(np.float32)
                     X_expr[i,] = ds['gene_expression'][celline_id][()] 
-                # X_expr[i,] = np.load(join(EXPRESSION_SAVE_PATH, f"{celline_id}.npy"))
                 if 'mutation' in list(self.omics_data.keys()):
-                #X_mutation[i,] = self.omics_data['mutation'].loc[celline_id].values.astype(np.float32)
                     X_mutation[i,] = ds['mutation'][celline_id][()]
-                # X_mutation[i,] = np.load(join(MUTATION_SAVE_PATH, f"{celline_id}.npy")) 
                 if 'methylation' in list(self.omics_data.keys()): 
-                # X_methylation[i,] = self.omics_data['methylation'].loc[celline_id].values.astype(np.float32)
                     X_methylation[i,] = ds['methylation'][celline_id][()]
-                # X_methylation[i,] = np.load(join(METHYLATION_SAVE_PATH, f"{celline_id}.npy")) 
-            #X_rdkit2d[i,] = self.drug_data['rdkit2d'].loc[int(cid)].values.astype(np.float32)
                 X_rdkit2d[i,] = ds['rdkit2d'][cid][()]
-            #X_fingerprint[i,] = self.drug_data['fingerprint'].loc[int(cid)].values.astype(np.float32)
                 X_fingerprint[i,] = ds['fingerprint'][cid][()]
-            #X_rdkit2d[i,] = np.load(join(RDKIT2D_SAVE_PATH, f"{cid}.npy"))
-            #X_fingerprint[i,] = np.load(join(FINGERPRINT_SAVE_PATH, f"{cid}.npy"))
-            # Store class
-        
-        y[i] = self.labels[ID]
-            # print(X_cnv.shape, X_cnv.dtype, str(X_cnv))
-            # print(y.shape, y.dtype, str(y))
+                y[i] = self.labels[ID]
+        # print(X_cnv.shape, X_cnv.dtype, str(X_cnv))
 
         return omics_feature, y # keras.utils.to_categorical(y, num_classes=2)
     
@@ -463,8 +449,3 @@ class DataGenerator(keras.utils.Sequence):
         # Generate data
         return self.__data_generation(sample_barcode_temp)
     
-
-if __name__ == "__main__":
-    ds = Dataset()
-    train, test = ds.split(validation=False).values()
-    train_generator = DataGenerator(sample_barcode=train, **ds.get_config())

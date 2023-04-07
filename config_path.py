@@ -49,10 +49,4 @@ lr_rate = 1e-3
 dropout_rate = .5
 
 # choose from ['methylation', 'gene_expression', 'cnv', 'mutation']
-feature_contained = ['gene_expression', 'cnv', 'methylation']
-
-# Choose from feature preprocessors ['SNF', 'Pretrained_beta-VAE', 'Pretrained_GCN', 'Transformer']
-gene_feature_extractor = ['SNF', 'Transformer']
-
-# choose from ['Pretrained_beta-VAE', 'Pretrained_GCN'] 
-drug_feature_extractor = ['Pretrained_beta-VAE', 'Pretrained_GCN']
+FEATURE = ['gene_expression', 'cnv', 'methylation', 'mutation']

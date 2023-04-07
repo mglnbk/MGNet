@@ -9,7 +9,6 @@ from os.path import realpath
 path = Path(__file__).parent.parent.absolute()
 sys.path.append(realpath(path)) # Project root folder
 from config_path import *
-from model.data import Dataset
 
 
 class CalculateSimilarity(Layer):
@@ -37,15 +36,13 @@ class CalculateSimilarity(Layer):
 
 class multichannel_network(Model):
     def __init__(self,
-                 feature_contained = ['cnv', 'methylation', 'mutation', 'gene_expression'],
-                 dropout=.5,
-                 n_channels = 4
+                 dataset,
+                 dropout=.5
                  ):
         super().__init__(self)
         self.dropout_rate = dropout
-        self.ds = Dataset(feature_contained=feature_contained, response='AUC')
+        self.ds = dataset
         self.ds.save()
-        self.n_channels = n_channels
 
     def build(self, input_shape):
 
@@ -54,10 +51,10 @@ class multichannel_network(Model):
         self.fp_conv1 = Conv1D(filters=4, kernel_size=8, activation='relu')
         self.fp_bn1 = BatchNormalization()
         self.fp_pool1 = MaxPool1D(3, 3)
-        self.fp_conv2 = Conv1D(filters=self.n_channels * 2, kernel_size=8, activation='relu')
+        self.fp_conv2 = Conv1D(filters=8, kernel_size=8, activation='relu')
         self.fp_bn2 = BatchNormalization()
         self.fp_pool2 = MaxPool1D(3, 3)
-        self.fp_conv3 = Conv1D(filters=self.n_channels * 4, kernel_size=8, activation='relu')
+        self.fp_conv3 = Conv1D(filters=16, kernel_size=8, activation='relu')
         self.fp_bn3 = BatchNormalization()
         self.fp_pool3 = MaxPool1D(3, 3)
         self.flatten = Flatten()
@@ -183,6 +180,7 @@ class multichannel_network(Model):
           meth = self.methylation_dense2(meth)
           meth = self.methylation_bn2(meth)
           meth = self.methylation_dropout(meth)
+          feature.append(meth)
 
         # Concat
         if len(feature) == 2:
