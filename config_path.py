@@ -36,17 +36,7 @@ PUBCHEM_ID_SMILES_PATH = realpath("data/processed_data/drugs/pubchem_id-SMILES.c
 PRETRAINED_BETA_VAE_PATH = realpath("utils/drug-molecule-generation-with-VAE")
 
 ## SAVE_PATH
-CNV_SAVE_PATH = realpath("data/feature/cnv/")
-FINGERPRINT_SAVE_PATH = realpath("data/feature/fingerprint/")
-EXPRESSION_SAVE_PATH = realpath("data/feature/gene_expression/")
-METHYLATION_SAVE_PATH = realpath("data/feature/methylation/")
-MUTATION_SAVE_PATH = realpath("data/feature/mutation/")
-RDKIT2D_SAVE_PATH = realpath("data/feature/rdkit2d/")
 HDF5_SAVE_PATH = realpath("data/processed_data/dataset.h5")
+MODEL_PATH = realpath("./")
 
-# model parameters settings
-lr_rate = 1e-3
-dropout_rate = .5
 
-# choose from ['methylation', 'gene_expression', 'cnv', 'mutation']
-FEATURE = ['gene_expression', 'cnv', 'methylation', 'mutation']
