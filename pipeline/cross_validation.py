@@ -1,38 +1,53 @@
-from sklearn.model_selection import cross_val_score, StratifiedKFold
+import tensorflow as tf
+from keras.metrics import AUC
+from keras.callbacks import LearningRateScheduler, ReduceLROnPlateau, EarlyStopping
+from keras.metrics import Precision, Recall
+import datetime
 import sys
 from pathlib import Path
-from os.path import realpath, join
+from os.path import realpath
 path = Path(__file__).parent.parent.absolute()
 sys.path.append(realpath(path)) # Project root folder
 from config_path import *
-from model.data import Dataset
-import tensorflow as tf
-from keras.metrics import AUC
-from keras.callbacks import LearningRateScheduler, EarlyStopping
-from keras.metrics import Precision, Recall
-import datetime
 from model.nn import multichannel_network
 from model.data import Dataset, DataGenerator
+from sklearn.utils import class_weight
+import numpy as np
 import pandas as pd
+from os.path import join
 
-# model parameters settings
-lr_rate = 1e-3
-dropout_rate = .5
-
-# choose from ['methylation', 'gene_expression', 'cnv', 'mutation']
+# Dataset Setting: 
+## choose from ['methylation', 'gene_expression', 'cnv', 'mutation']
 FEATURE = ['gene_expression', 'cnv', 'methylation', 'mutation']
-
 ds = Dataset(
     feature_contained=FEATURE, 
     dataset='GDSC', 
     set_label=True, 
-    response='', 
-    threshold=.4
-    )
+    response='AUC', 
+    threshold=.7)
 
+# model parameters settings
+lr_rate = 1e-3
+dropout_rate = .5
 batch_size = 64
 epochs = 10
 
+# Split train, test and validation set for training and testing, build generators
+partition = ds.split(validation=True)
+train = partition['train']
+test = partition['test']
+validation = partition['validation']
+train_generator = DataGenerator(sample_barcode=train, **ds.get_config(), batch_size=batch_size)
+validation_generator = DataGenerator(sample_barcode=validation, **ds.get_config(), batch_size=batch_size)
+test_generator = DataGenerator(sample_barcode=test, **ds.get_config(), batch_size=batch_size)
+
+# Training parameters
+class_weights = class_weight.compute_class_weight(class_weight='balanced',
+                                                 classes=np.unique([ds.labels[x] for x in train]),
+                                                 y=[ds.labels[x] for x in train])
+weights_dict = {i:w for i,w in enumerate(class_weights)}
+log_dir = "logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
 def scheduler(epoch, lr):
     if(epoch % 5 ==0 and epoch !=0):
         return lr*0.1
@@ -44,15 +59,24 @@ reduce_lr = LearningRateScheduler(scheduler)
 early_stop = EarlyStopping(monitor='val_loss', patience=10)
 
 def cross_validation(k_fold=5):
-    model = multichannel_network(
-        dataset=ds,
-        dropout=.5
-    )
     result = []
     # Split train, test and validation set for training and testing
     partition = ds.k_fold(k=k_fold)
     print(f"{k_fold}-Fold Cross_Validation Begin!")
-    model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.01),
+
+    for idx, sub in partition.items():
+        print(f"This is {idx}...")
+        train = sub['train']
+        test = sub['test']
+
+        train_generator = DataGenerator(sample_barcode=train, **ds.get_config(), batch_size=batch_size)
+        test_generator = DataGenerator(sample_barcode=test, **ds.get_config(), batch_size=batch_size)
+
+        model = multichannel_network(
+            dataset=ds,
+            dropout=.5
+        )
+        model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=lr_rate),
               loss=tf.keras.losses.BinaryCrossentropy(),
               metrics=
               [
@@ -62,14 +86,6 @@ def cross_validation(k_fold=5):
                 AUC(curve='PR')
               ]
             )
-
-    for idx, sub in partition.items():
-        print(f"This is {idx}...")
-        train = sub['train']
-        test = sub['test']
-
-        train_generator = DataGenerator(sample_barcode=train, **ds.get_config(), batch_size=batch_size)
-        test_generator = DataGenerator(sample_barcode=test, **ds.get_config(), batch_size=batch_size)
 
         log_dir = "logs/cv_fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
         tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
@@ -82,6 +98,7 @@ def cross_validation(k_fold=5):
         
         scores = model.evaluate(x=test_generator) 
         result.append(list(scores))
+        model.save(filepath=join(RESULT_PATH, f"{idx}_fold_model.h5"))
     
     pd.DataFrame(result, columns=list(model.metrics_names)).to_csv(join(RESULT_PATH, "CV.csv"), index=None)
 
