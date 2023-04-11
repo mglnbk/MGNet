@@ -2,6 +2,7 @@ import tensorflow as tf
 from keras.metrics import AUC
 from keras.callbacks import LearningRateScheduler, ReduceLROnPlateau, EarlyStopping
 from keras.metrics import Precision, Recall
+from keras.losses import BinaryCrossentropy
 import datetime
 from model.nn import multichannel_network
 from model.data import Dataset, DataGenerator
@@ -16,13 +17,13 @@ ds = Dataset(
     dataset='GDSC', 
     set_label=True, 
     response='AUC', 
-    threshold=.7)
+    threshold=.88)
 
 # model parameters settings
-lr_rate = 1e-3
+lr_rate = 3e-4
 dropout_rate = .5
-batch_size = 64
-epochs = 10
+batch_size = 32
+epochs = 2
 
 # Split train, test and validation set for training and testing, build generators
 partition = ds.split(validation=True)
@@ -58,13 +59,14 @@ model = multichannel_network(
     )
 
 model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=lr_rate),
-              loss=tf.keras.losses.BinaryCrossentropy(),
+              loss=BinaryCrossentropy(),
               metrics=
               [
                 Precision(name="precision"),
                 Recall(name="recall"),
                 AUC(curve='ROC'),
                 AUC(curve='PR')
+                
               ]
             )
 

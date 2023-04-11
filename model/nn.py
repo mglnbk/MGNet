@@ -4,12 +4,20 @@ from keras import Model, layers
 from keras import backend as K
 from keras.layers import Conv1D, MaxPool1D, Dense, BatchNormalization
 from keras.layers import Flatten, Layer, Concatenate, Reshape
+from keras.layers.preprocessing import normalization
 from pathlib import Path
 from os.path import realpath
 path = Path(__file__).parent.parent.absolute()
 sys.path.append(realpath(path)) # Project root folder
 from config_path import *
 
+
+class StandardNormalization(Layer):
+    def __init__(self, trainable=False):
+      super().__init__(trainable=trainable)
+    
+    def call(self, inputs):
+      return (inputs-K.mean(inputs, axis=-1))/K.var(inputs, axis=-1) 
 
 class CalculateSimilarity(Layer):
   """Layer for calculating the similarity network
@@ -18,11 +26,11 @@ class CalculateSimilarity(Layer):
       Layer (keras.layers.Layer): inherited
   """
 
-  def __init__(self, sample_matrix, metric = 'euclidean', name=None, **kwargs):
+  def __init__(self, sample_matrix, trainable=False, metric = 'euclidean', name=None, **kwargs):
+    super(CalculateSimilarity, self).__init__(name=name, trainable=trainable, **kwargs)
     self.metric = metric
-    self.trainable = False
+    self.trainable = trainable
     self.sample_matrix = tf.constant(value = sample_matrix, dtype=tf.float32)
-    super(CalculateSimilarity, self).__init__(name=name, **kwargs)
 
   def call(self, inputs):
     print(inputs.shape)
@@ -30,8 +38,9 @@ class CalculateSimilarity(Layer):
     temp = K.stack([self.sample_matrix]*len(inputs), axis=0)
     temp = tf.cast(temp, tf.float32)
     inputs = tf.cast(inputs, tf.float32)
-    gamma = K.constant(value = 0.001)
-    return K.exp(-gamma * K.sum(K.square(temp-inputs), axis=-1))
+    gamma = K.constant(value = 0.001) # batch * feature
+    inputs = K.exp(-gamma * K.sum(K.square(temp-inputs), axis=-1))
+    return inputs
 
 class multichannel_network(Model):
     def __init__(self,
@@ -57,14 +66,15 @@ class multichannel_network(Model):
         self.fp_bn3 = BatchNormalization()
         self.fp_pool3 = MaxPool1D(3, 3)
         self.flatten = Flatten()
-        self.fp_fc1 = Dense(512)
-        self.fp_bn4 = BatchNormalization()
+        #self.fp_fc1 = Dense(512)
+        #self.fp_bn4 = BatchNormalization()
         self.fp_fc2 = Dense(128)
         self.fp_bn5 = BatchNormalization()
+        self.fp_dropout = layers.Dropout(rate=self.dropout_rate)
 
         # Molecular 2D Component, 200-dim vector
-        self.rdkit_dense1 = layers.Dense(units=512, activation='relu')
-        self.rdkit_bn1 = layers.BatchNormalization()
+        #self.rdkit_dense1 = layers.Dense(units=512, activation='relu')
+        #self.rdkit_bn1 = layers.BatchNormalization()
         self.rdkit_dense2 = layers.Dense(units=128, activation='relu')
         self.rdkit_bn2 = layers.BatchNormalization()
         self.rdkit_dropout = layers.Dropout(rate = self.dropout_rate)
@@ -72,8 +82,8 @@ class multichannel_network(Model):
         # Copy Number Variation
         if 'cnv' in self.ds.feature_contained:
           self.similarity_layer_cnv = CalculateSimilarity(sample_matrix=self.ds.omics_data['cnv'])
-          self.cnv_dense1 = layers.Dense(units=512, activation='relu')
-          self.cnv_bn1 = layers.BatchNormalization()
+          #self.cnv_dense1 = layers.Dense(units=512, activation='relu')
+          #self.cnv_bn1 = layers.BatchNormalization()
           self.cnv_dense2 = layers.Dense(units=128, activation='relu')
           self.cnv_bn2 = layers.BatchNormalization()
           self.cnv_dropout = layers.Dropout(rate = self.dropout_rate)
@@ -81,8 +91,8 @@ class multichannel_network(Model):
         # Gene Expression
         if 'gene_expression' in self.ds.feature_contained:
           self.similarity_layer_expr = CalculateSimilarity(sample_matrix=self.ds.omics_data['gene_expression'])
-          self.gene_expression_dense1 = layers.Dense(units=512, activation='relu')
-          self.gene_expression_bn1 = layers.BatchNormalization()
+          #self.gene_expression_dense1 = layers.Dense(units=512, activation='relu')
+          #self.gene_expression_bn1 = layers.BatchNormalization()
           self.gene_expression_dense2 = layers.Dense(units=128, activation='relu')
           self.gene_expression_bn2 = layers.BatchNormalization()
           self.gene_expression_dropout = layers.Dropout(rate = self.dropout_rate)
@@ -90,8 +100,8 @@ class multichannel_network(Model):
         # Gene Mutations
         if 'mutation' in self.ds.feature_contained:
           self.similarity_layer_mut = CalculateSimilarity(sample_matrix=self.ds.omics_data['mutation'])
-          self.mutations_dense1 = layers.Dense(units=512, activation='relu')
-          self.mutations_bn1 = layers.BatchNormalization()
+          #self.mutations_dense1 = layers.Dense(units=512, activation='relu')
+          #self.mutations_bn1 = layers.BatchNormalization()
           self.mutations_dense2 = layers.Dense(units=128, activation='relu')
           self.mutations_bn2 = layers.BatchNormalization()
           self.mutations_dropout = layers.Dropout(rate = self.dropout_rate)
@@ -99,15 +109,15 @@ class multichannel_network(Model):
         # Methylation
         if 'methylation' in self.ds.feature_contained:
           self.similarity_layer_meth = CalculateSimilarity(sample_matrix=self.ds.omics_data['methylation'])
-          self.methylation_dense1 = layers.Dense(units=512, activation='relu')
-          self.methylation_bn1 = layers.BatchNormalization()
+          #self.methylation_dense1 = layers.Dense(units=512, activation='relu')
+          #self.methylation_bn1 = layers.BatchNormalization()
           self.methylation_dense2 = layers.Dense(units=128, activation='relu')
           self.methylation_bn2 = layers.BatchNormalization()
           self.methylation_dropout = layers.Dropout(rate = self.dropout_rate)
 
         # Integration Layer
         self.concat = Concatenate()
-        self.integration_dense1 = Dense(512, activation='relu')
+        #self.integration_dense1 = Dense(512, activation='relu')
         self.intergration_bn1 = BatchNormalization()
         self.integration_dense2 = Dense(128, activation='relu')
         self.intergration_bn2 = BatchNormalization()
@@ -116,7 +126,8 @@ class multichannel_network(Model):
     def call(self, inputs):
         
         # Finger Print
-        x = self.reshape_layer(inputs[0])
+        x = inputs[0]
+        x = self.reshape_layer(x)
         x = self.fp_conv1(x)
         x = self.fp_bn1(x)
         x = self.fp_pool1(x)
@@ -127,15 +138,16 @@ class multichannel_network(Model):
         x = self.fp_bn3(x)
         x = self.fp_pool3(x)
         x = self.flatten(x)
-        x = self.fp_fc1(x)
-        x = self.fp_bn4(x)
+        #x = self.fp_fc1(x)
+        #x = self.fp_bn4(x)
         x = self.fp_fc2(x)
         x = self.fp_bn5(x)
+        x = self.fp_dropout(x)
 
         # Molecular 2D Rdkit
         r = inputs[1]
-        r = self.rdkit_dense1(r)
-        r = self.rdkit_bn1(r)
+        #r = self.rdkit_dense1(r)
+        #r = self.rdkit_bn1(r)
         r = self.rdkit_dense2(r)
         r = self.rdkit_bn2(r)
         r = self.rdkit_dropout(r)
@@ -143,9 +155,10 @@ class multichannel_network(Model):
         feature = [x, r]
         # CNV
         if 'cnv' in self.ds.feature_contained:
-          c = self.similarity_layer_cnv(inputs[2])
-          c = self.cnv_dense1(c)
-          c = self.cnv_bn1(c)
+          c = inputs[2]
+          c = self.similarity_layer_cnv(c)
+          #c = self.cnv_dense1(c)
+          #c = self.cnv_bn1(c)
           c = self.cnv_dense2(c)
           c = self.cnv_bn2(c)
           c = self.cnv_dropout(c)
@@ -153,9 +166,10 @@ class multichannel_network(Model):
 
         # gene_expression 
         if 'gene_expression' in self.ds.feature_contained:
-          g = self.similarity_layer_expr(inputs[3])
-          g = self.gene_expression_dense1(g)
-          g = self.gene_expression_bn1(g)
+          g = inputs[3]
+          g = self.similarity_layer_expr(g)
+          #g = self.gene_expression_dense1(g)
+          #g = self.gene_expression_bn1(g)
           g = self.gene_expression_dense2(g)
           g = self.gene_expression_bn2(g)
           g = self.gene_expression_dropout(g)
@@ -163,9 +177,10 @@ class multichannel_network(Model):
 
         # mutations
         if 'mutation' in self.ds.feature_contained:
-          mut = self.similarity_layer_mut(inputs[4])
-          mut = self.mutations_dense1(mut)
-          mut = self.mutations_bn1(mut)
+          mut = inputs[4]
+          mut = self.similarity_layer_mut(mut)
+          #mut = self.mutations_dense1(mut)
+          #mut = self.mutations_bn1(mut)
           mut = self.mutations_dense2(mut)
           mut = self.mutations_bn2(mut)
           mut = self.mutations_dropout(mut)
@@ -173,9 +188,10 @@ class multichannel_network(Model):
 
         # methylation
         if 'methylation' in self.ds.feature_contained:
-          meth = self.similarity_layer_meth(inputs[5])
-          meth = self.methylation_dense1(meth) 
-          meth = self.methylation_bn1(meth)
+          meth = inputs[5]
+          meth = self.similarity_layer_meth(meth)
+          #meth = self.methylation_dense1(meth) 
+          #meth = self.methylation_bn1(meth)
           meth = self.methylation_dense2(meth)
           meth = self.methylation_bn2(meth)
           meth = self.methylation_dropout(meth)
@@ -185,7 +201,7 @@ class multichannel_network(Model):
         if len(feature) == 2:
            raise RuntimeError("No features of cellines specified")
         output = self.concat(feature)
-        output = self.integration_dense1(output)
+        #output = self.integration_dense1(output)
         output = self.intergration_bn1(output)
         output = self.integration_dense2(output)
         output = self.intergration_bn2(output)

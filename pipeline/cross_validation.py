@@ -89,7 +89,6 @@ def cross_validation(k_fold=5):
 
         log_dir = "logs/cv_fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
         tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
-
         history = model.fit(x=train_generator, 
                     epochs=epochs,
                     validation_data=test_generator, 
@@ -98,7 +97,8 @@ def cross_validation(k_fold=5):
         
         scores = model.evaluate(x=test_generator) 
         result.append(list(scores))
-        model.save(filepath=join(RESULT_PATH, f"{idx}_fold_model.h5"))
+        
+        model.save(filepath=join(RESULT_PATH, f"{idx}_fold_model"), save_format='tf')
     
     pd.DataFrame(result, columns=list(model.metrics_names)).to_csv(join(RESULT_PATH, "CV.csv"), index=None)
 

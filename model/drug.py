@@ -209,3 +209,8 @@ class Drug:
         self.drug_feature = get_drug_feature(method=method)
 
         print("Drug data loaded")
+
+
+if __name__ == "__main__":
+     d=Drug()
+     print(d.cid2smiles.index)
