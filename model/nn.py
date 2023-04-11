@@ -32,14 +32,18 @@ class CalculateSimilarity(Layer):
     self.trainable = trainable
     self.sample_matrix = tf.constant(value = sample_matrix, dtype=tf.float32)
 
+  def build(self, input_shape):
+     input_shape = tf.TensorShape(input_shape)
+     print(input_shape)
+     self.batch_size = input_shape[0]
+
   def call(self, inputs):
-    print(inputs.shape)
-    inputs = K.stack([inputs]*len(self.sample_matrix), axis=-2)
-    temp = K.stack([self.sample_matrix]*len(inputs), axis=0)
+    inputs = K.stack([inputs]*self.sample_matrix.shape[0], axis=-2) # b * (n) *f
+    temp = K.stack([self.sample_matrix]*self.batch_size, axis=0) # (b) * n * f
     temp = tf.cast(temp, tf.float32)
     inputs = tf.cast(inputs, tf.float32)
     gamma = K.constant(value = 0.001) # batch * feature
-    inputs = K.exp(-gamma * K.sum(K.square(temp-inputs), axis=-1))
+    inputs = K.exp(-gamma * K.sum(K.square(temp-inputs), axis=-1)) # (b) * n
     return inputs
 
 class multichannel_network(Model):
@@ -53,7 +57,7 @@ class multichannel_network(Model):
         self.ds.save()
 
     def build(self, input_shape):
-
+        
         # Molecular finger print, 881-dim sparse vector, Conv1D
         self.reshape_layer = Reshape(target_shape=(881,1))
         self.fp_conv1 = Conv1D(filters=4, kernel_size=8, activation='relu')
