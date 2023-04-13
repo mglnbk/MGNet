@@ -135,7 +135,6 @@ class Dataset():
         self.drug_info = Drug(method='manual')
         # self.celline = load_data_celline(RAW_CELLINE_GDSC_PATH, "GDSC")
         self.experiment = load_data_experiment(RAW_EXPERIMENT_GDSC_PATH, self.dataset)
-        print(self.experiment.columns)
         # First to preprocess experiment data matrix !
         self.celline_barcode = self.get_celline_barcode()
         self.processed_experiment = self.preprocess_experiment()
@@ -242,19 +241,19 @@ class Dataset():
         print("Select Overlapping Cellines...")
         all_experiment = self.experiment[self.experiment['CELL_LINE_NAME'].isin(self.celline_barcode)]
         all_experiment.reset_index(drop=True, inplace = True)
-
+        print(all_experiment.columns)
         print("Select Overlapping Cellines with available PubChem CIDs...")
         if (self.dataset == "GDSC"):
-            all_experiment = all_experiment.join(self.drug_info.gdsc_filter.set_index('SYNONYMS'), on='DRUG_NAME', how="inner")
-            all_experiment = all_experiment.join(self.drug_info.cid2smiles.set_index('CID'), on='CID', how='inner')
+            all_experiment = all_experiment.join(self.drug_info.all_drugs, on="DRUG_NAME", how="inner")
+            #all_experiment = all_experiment.join(self.drug_info.cid2smiles.set_index('CID'), on='CID', how='inner')
             all_experiment.reset_index(drop=True, inplace=True)
         elif (self.dataset == "CTRP"):
-            all_experiment = all_experiment.join(self.drug_info.ctrp_filter.set_index('SMILES'), on='SMILES', how="inner")
-            all_experiment = all_experiment.join(self.drug_info.cid2smiles.set_index('CID'), on='CID', how='inner')
+            all_experiment = all_experiment.join(self.drug_info.all_drugs, on="DRUG_NAME", how="inner")
+            #all_experiment = all_experiment.join(self.drug_info.cid2smiles.set_index('CID'), on='CID', how='inner')
             all_experiment.reset_index(drop=True, inplace=True)
 
         print("Create Unique Sample Barcode...")
-        sample_barcode = [f"{i[0]}_{i[1]}" for i in zip(all_experiment['CELL_LINE_NAME'], all_experiment['CID'])]
+        sample_barcode = [f"{i[0]}_{i[1]}" for i in zip(all_experiment['CELL_LINE_NAME'], all_experiment['DRUG_NAME'])]
         all_experiment['SAMPLE_BARCODE'] = sample_barcode
 
         # Normalization if needed
@@ -347,7 +346,6 @@ class Dataset():
     def save(self):
         print("Save the dataset into hdf5 data format...")
         cid_list = list(set(i.split('_')[1] for i in self.response['SAMPLE_BARCODE']))
-        cid_list = [int(i) for i in cid_list]
         celline_id = list(set(i.split('_')[0] for i in self.response['SAMPLE_BARCODE']))
         with h5py.File(HDF5_SAVE_PATH, 'w') as ds:
             if 'cnv' in self.feature_contained: 

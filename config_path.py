@@ -20,8 +20,12 @@ RAW_COMPOUND_CTRP_PATH = realpath("data/raw_data/CTRPv2.0/v20.meta.per_compound.
 RAW_META_EXPERIMENT_CTRP_PATH = realpath("data/raw_data/CTRPv2.0/v20.meta.per_experiment.txt")
 
 ## DRUG DATA PATH
+GDSC_DRUG_PATH = realpath('data/raw_data/screened_compounds_rel_8.4.csv')
+CTRP_DRUG_PATH = realpath('data/raw_data/CTRPv2.0/v20.meta.per_compound.txt')
 RAW_DRUG_CTRP_PATH = realpath('data/processed_data/drugs/CTRP_SMILES2CIDS.txt')
 RAW_DRUG_GDSC_PATH = realpath('data/processed_data/drugs/GDSC_SYNS2CIDS.txt')
+GDSC_NAME2SMILES_PATH = realpath('data/processed_data/drugs/GDSC_NAME2SMILES.csv')
+CTRP_SMILES2Canonical_PATH = realpath('data/processed_data/drugs/CTRP_SMILES2Canonical.csv')
 
 ## PROCESSED_GDSC_PATH
 PROCESSED_FPKM_GDSC_PATH = realpath("data/processed_data/fpkm.csv")

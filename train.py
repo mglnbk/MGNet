@@ -14,15 +14,15 @@ import numpy as np
 FEATURE = ['gene_expression', 'cnv', 'methylation', 'mutation']
 ds = Dataset(
     feature_contained=FEATURE, 
-    dataset='GDSC', 
+    dataset='CTRP', 
     set_label=True, 
     response='AUC', 
-    threshold=.88)
+    threshold=.5)
 
 # model parameters settings
-lr_rate = 3e-4
+lr_rate = 0.001
 dropout_rate = .5
-batch_size = 32
+batch_size = 64
 epochs = 2
 
 # Split train, test and validation set for training and testing, build generators
@@ -82,5 +82,3 @@ model.evaluate(x=test_generator)
 
 # save model
 model.save("model.h5")
-
-
