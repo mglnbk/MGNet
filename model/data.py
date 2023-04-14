@@ -132,7 +132,7 @@ class Dataset():
         if "mutation" in feature_contained:
             self.mutation = load_data_mutation(RAW_SNV_GDSC_PATH)
 
-        self.drug_info = Drug(method='manual')
+        self.drug_info = Drug()
         # self.celline = load_data_celline(RAW_CELLINE_GDSC_PATH, "GDSC")
         self.experiment = load_data_experiment(RAW_EXPERIMENT_GDSC_PATH, self.dataset)
         # First to preprocess experiment data matrix !
@@ -207,7 +207,7 @@ class Dataset():
                 fold_2: ... 
             }
         """
-        skf = StratifiedKFold(n_splits=k)
+        skf = StratifiedKFold(n_splits=k, shuffle=True, random_state=42)
         partition = {}
         for i, (train_index, test_index) in enumerate(skf.split(np.zeros(len(self.labels)), list(self.labels.values()))):
             partition[f'fold_{i}'] = {

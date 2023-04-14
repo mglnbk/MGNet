@@ -18,7 +18,8 @@ ds = Dataset(
     set_label=True, 
     response='AUC', 
     threshold=.5)
-
+# CTRP, "AUC", 0.5, 0.001
+# GDSC, "AUC", .88, 0.001
 # model parameters settings
 lr_rate = 0.001
 dropout_rate = .5

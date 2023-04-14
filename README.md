@@ -33,3 +33,7 @@ Note that the genomic data and compound data from CTRPv2 and GDSC are all proces
 As for the docs of single cell omics data, please read URL: https://depmap.sanger.ac.uk/documentation/datasets/
 
 As for the data contained in data/processed_data/drugs/*, they are processed from the public interface provided by PubChem(https://pubchem.ncbi.nlm.nih.gov/idexchange/idexchange.cgi)
+
+According to experiment result, 
+For **GDSC**, lr=1e-3, threshold=.88, response=AUC, batch_size = 64 due to RAM limit
+For **CTRP**, lr=1e-3, threshold=.58, response=AUC, batch_size = 64 due to RAM limit

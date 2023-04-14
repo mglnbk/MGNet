@@ -21,16 +21,16 @@ from os.path import join
 FEATURE = ['gene_expression', 'cnv', 'methylation', 'mutation']
 ds = Dataset(
     feature_contained=FEATURE, 
-    dataset='GDSC', 
+    dataset='CTRP', 
     set_label=True, 
     response='AUC', 
-    threshold=.7)
+    threshold=.58)
 
 # model parameters settings
 lr_rate = 1e-3
 dropout_rate = .5
 batch_size = 64
-epochs = 10
+epochs = 2
 
 # Split train, test and validation set for training and testing, build generators
 partition = ds.split(validation=True)
@@ -91,12 +91,13 @@ def cross_validation(k_fold=5):
         tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
         history = model.fit(x=train_generator, 
                     epochs=epochs,
-                    validation_data=test_generator, 
+                    #validation_data=test_generator, 
                     callbacks=[reduce_lr, early_stop, tensorboard_callback]
                     )
         
         scores = model.evaluate(x=test_generator) 
         result.append(list(scores))
+        print(result)
         
         model.save(filepath=join(RESULT_PATH, f"{idx}_fold_model"), save_format='tf')
     

@@ -224,7 +224,7 @@ def prepare_name2smiles():
          
 # CIDs are all extracted from PubChem Id Convertors
 class Drug:
-    def __init__(self, method='manual'):
+    def __init__(self):
         print("Begin loading drug data...")
         gdsc_filter = pd.read_csv(GDSC_NAME2SMILES_PATH, dtype=('str', 'str'), index_col=0)
         gdsc_filter = gdsc_filter[gdsc_filter['CanonicalSMILES'] != 'None']
