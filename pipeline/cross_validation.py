@@ -86,22 +86,24 @@ def cross_validation(k_fold=5):
                 AUC(curve='PR')
               ]
             )
-
         log_dir = "logs/cv_fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
         tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
         history = model.fit(x=train_generator, 
                     epochs=epochs,
                     #validation_data=test_generator, 
-                    callbacks=[reduce_lr, early_stop, tensorboard_callback]
+                    callbacks=[reduce_lr, early_stop, tensorboard_callback],
+                    class_weight = weights_dict
                     )
         
         scores = model.evaluate(x=test_generator) 
         result.append(list(scores))
         print(result)
-        
-        model.save(filepath=join(RESULT_PATH, f"{idx}_fold_model"), save_format='tf')
+        dataset_name = ds.dataset
+        model.save(filepath=join(RESULT_PATH, f"{idx}_{k_fold}_{dataset_name}_fold_model"), save_format='tf')
     
-    pd.DataFrame(result, columns=list(model.metrics_names)).to_csv(join(RESULT_PATH, "CV.csv"), index=None)
+    feature_name = "_".join(FEATURE)
+    response = ds.target
+    pd.DataFrame(result, columns=list(model.metrics_names)).to_csv(join(RESULT_PATH, f"CV_{feature_name}_{lr_rate}_{epochs}_{response}.csv"), index=None)
 
 if __name__ == "__main__":
     cross_validation()

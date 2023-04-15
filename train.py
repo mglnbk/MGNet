@@ -17,14 +17,14 @@ ds = Dataset(
     dataset='CTRP', 
     set_label=True, 
     response='AUC', 
-    threshold=.5)
-# CTRP, "AUC", 0.5, 0.001
+    threshold=.58)
+# CTRP, "AUC", 0.58, 0.001
 # GDSC, "AUC", .88, 0.001
 # model parameters settings
 lr_rate = 0.001
 dropout_rate = .5
-batch_size = 64
-epochs = 2
+batch_size = 32
+epochs = 10
 
 # Split train, test and validation set for training and testing, build generators
 partition = ds.split(validation=True)
@@ -71,15 +71,15 @@ model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=lr_rate),
               ]
             )
 
-history = model.fit(x=train_generator, 
-                    epochs=epochs,
-                    validation_data=validation_generator, 
-                    callbacks=[reduce_lr, early_stop],
-                    class_weight=weights_dict
+history = model.fit(
+    x=train_generator, 
+    epochs=epochs,
+    validation_data=validation_generator, 
+    callbacks=[reduce_lr, early_stop],
+    class_weight=weights_dict
                     )
 
-model.evaluate(x=test_generator) 
+scores = model.evaluate(x=test_generator) 
 
-
+print(list(scores))
 # save model
-model.save("model.h5")
