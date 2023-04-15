@@ -4,7 +4,7 @@ from keras import Model, layers
 from keras import backend as K
 from keras.layers import Conv1D, MaxPool1D, Dense, BatchNormalization
 from keras.layers import Flatten, Layer, Concatenate, Reshape
-from keras.layers.preprocessing import normalization
+from keras.layers import Normalization
 from pathlib import Path
 from os.path import realpath
 path = Path(__file__).parent.parent.absolute()
@@ -34,7 +34,6 @@ class CalculateSimilarity(Layer):
 
   def build(self, input_shape):
      input_shape = tf.TensorShape(input_shape)
-     print(input_shape)
      self.batch_size = input_shape[0]
 
   def call(self, inputs):
@@ -49,11 +48,13 @@ class CalculateSimilarity(Layer):
 class multichannel_network(Model):
     def __init__(self,
                  dataset,
+                 train_sample_barcode,
                  dropout=.5
                  ):
         super().__init__(self)
         self.dropout_rate = dropout
         self.ds = dataset
+        self.cell_line = list(set(i.split("_")[0] for i in train_sample_barcode))
         self.ds.save()
 
     def build(self, input_shape):
@@ -85,7 +86,10 @@ class multichannel_network(Model):
 
         # Copy Number Variation
         if 'cnv' in self.ds.feature_contained:
-          self.similarity_layer_cnv = CalculateSimilarity(sample_matrix=self.ds.omics_data['cnv'])
+          self.cnv_norm = Normalization(axis=-1)
+          self.cnv_norm.adapt(data=self.ds.omics_data['cnv'].loc[self.cell_line].values)
+
+          self.similarity_layer_cnv = CalculateSimilarity(sample_matrix=self.ds.omics_data['cnv'].loc[self.cell_line])
           #self.cnv_dense1 = layers.Dense(units=512, activation='relu')
           #self.cnv_bn1 = layers.BatchNormalization()
           self.cnv_dense2 = layers.Dense(units=128, activation='relu')
@@ -94,7 +98,10 @@ class multichannel_network(Model):
 
         # Gene Expression
         if 'gene_expression' in self.ds.feature_contained:
-          self.similarity_layer_expr = CalculateSimilarity(sample_matrix=self.ds.omics_data['gene_expression'])
+          self.gene_expression_norm = Normalization(axis=-1)
+          self.gene_expression_norm.adapt(data=self.ds.omics_data['gene_expression'].loc[self.cell_line].values)
+
+          self.similarity_layer_expr = CalculateSimilarity(sample_matrix=self.ds.omics_data['gene_expression'].loc[self.cell_line])
           #self.gene_expression_dense1 = layers.Dense(units=512, activation='relu')
           #self.gene_expression_bn1 = layers.BatchNormalization()
           self.gene_expression_dense2 = layers.Dense(units=128, activation='relu')
@@ -103,7 +110,10 @@ class multichannel_network(Model):
         
         # Gene Mutations
         if 'mutation' in self.ds.feature_contained:
-          self.similarity_layer_mut = CalculateSimilarity(sample_matrix=self.ds.omics_data['mutation'])
+          self.mutation_norm = Normalization(axis=-1)
+          self.mutation_norm.adapt(data=self.ds.omics_data['mutation'].loc[self.cell_line].values)
+
+          self.similarity_layer_mut = CalculateSimilarity(sample_matrix=self.ds.omics_data['mutation'].loc[self.cell_line])
           #self.mutations_dense1 = layers.Dense(units=512, activation='relu')
           #self.mutations_bn1 = layers.BatchNormalization()
           self.mutations_dense2 = layers.Dense(units=128, activation='relu')
@@ -112,7 +122,10 @@ class multichannel_network(Model):
 
         # Methylation
         if 'methylation' in self.ds.feature_contained:
-          self.similarity_layer_meth = CalculateSimilarity(sample_matrix=self.ds.omics_data['methylation'])
+          self.methylation_norm = Normalization(axis=-1)
+          self.methylation_norm.adapt(data=self.ds.omics_data['methylation'].loc[self.cell_line].values)
+
+          self.similarity_layer_meth = CalculateSimilarity(sample_matrix=self.ds.omics_data['methylation'].loc[self.cell_line])
           #self.methylation_dense1 = layers.Dense(units=512, activation='relu')
           #self.methylation_bn1 = layers.BatchNormalization()
           self.methylation_dense2 = layers.Dense(units=128, activation='relu')
@@ -160,6 +173,7 @@ class multichannel_network(Model):
         # CNV
         if 'cnv' in self.ds.feature_contained:
           c = inputs[2]
+          c = self.cnv_norm(c)
           c = self.similarity_layer_cnv(c)
           #c = self.cnv_dense1(c)
           #c = self.cnv_bn1(c)
@@ -171,6 +185,7 @@ class multichannel_network(Model):
         # gene_expression 
         if 'gene_expression' in self.ds.feature_contained:
           g = inputs[3]
+          g = self.gene_expression_norm(g)
           g = self.similarity_layer_expr(g)
           #g = self.gene_expression_dense1(g)
           #g = self.gene_expression_bn1(g)
@@ -182,6 +197,7 @@ class multichannel_network(Model):
         # mutations
         if 'mutation' in self.ds.feature_contained:
           mut = inputs[4]
+          mut = self.mutation_norm(mut)
           mut = self.similarity_layer_mut(mut)
           #mut = self.mutations_dense1(mut)
           #mut = self.mutations_bn1(mut)
@@ -193,6 +209,7 @@ class multichannel_network(Model):
         # methylation
         if 'methylation' in self.ds.feature_contained:
           meth = inputs[5]
+          meth = self.methylation_norm(meth)
           meth = self.similarity_layer_meth(meth)
           #meth = self.methylation_dense1(meth) 
           #meth = self.methylation_bn1(meth)

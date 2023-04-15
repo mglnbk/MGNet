@@ -10,7 +10,6 @@ from config_path import *
 from model.drug import Drug
 from os.path import join
 from sklearn.model_selection import train_test_split, StratifiedKFold
-from sklearn.preprocessing import StandardScaler
 import h5py
 
 # 注：min-Max归一化需要在分割完训练集和测试集和Validation set之后再进行
@@ -284,24 +283,15 @@ class Dataset():
 
     def preprocess_omics(self) -> dict:
         s = {}
-        scaler = StandardScaler()
         print("Preparing Omics data...")
         if 'gene_expression' in self.feature_contained:
-            df = self.fpkm
-            df.iloc[:,:] = scaler.fit_transform(df.iloc[:,:])
-            s['gene_expression'] = df.loc[self.celline_barcode]
+            s['gene_expression'] = self.fpkm.loc[self.celline_barcode]
         if 'cnv' in self.feature_contained:
-            df = self.cnv
-            df.iloc[:,:] = scaler.fit_transform(df.iloc[:,:])
-            s['cnv'] = df.loc[self.celline_barcode]
+            s['cnv'] = self.cnv.loc[self.celline_barcode]
         if 'mutation' in self.feature_contained:
-            df = self.mutation
-            df.iloc[:,:] = scaler.fit_transform(df.iloc[:,:])
-            s['mutation'] = df.loc[self.celline_barcode]
+            s['mutation'] = self.mutation.loc[self.celline_barcode]
         if 'methylation' in self.feature_contained:
-            df = self.methylation
-            df.iloc[:,:] = scaler.fit_transform(df.iloc[:,:])
-            s['methylation'] = df.loc[self.celline_barcode]
+            s['methylation'] = self.methylation.loc[self.celline_barcode]
         print("Omics data Done!")
         return s
 

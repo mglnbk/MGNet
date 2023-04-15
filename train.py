@@ -56,6 +56,7 @@ early_stop = EarlyStopping(monitor='val_loss', patience=10)
 # model building
 model = multichannel_network(
     dataset=ds,
+    train_sample_barcode=train,
     dropout=dropout_rate
     )
 
