@@ -30,7 +30,7 @@ ds = Dataset(
 lr_rate = 1e-3
 dropout_rate = .5
 batch_size = 64
-epochs = 2
+epochs = 10
 
 # Split train, test and validation set for training and testing, build generators
 partition = ds.split(validation=True)
@@ -74,6 +74,7 @@ def cross_validation(k_fold=5):
 
         model = multichannel_network(
             dataset=ds,
+            train_sample_barcode=train,
             dropout=.5
         )
         model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=lr_rate),

@@ -12,13 +12,6 @@ sys.path.append(realpath(path)) # Project root folder
 from config_path import *
 
 
-class StandardNormalization(Layer):
-    def __init__(self, trainable=False):
-      super().__init__(trainable=trainable)
-    
-    def call(self, inputs):
-      return (inputs-K.mean(inputs, axis=-1))/K.var(inputs, axis=-1) 
-
 class CalculateSimilarity(Layer):
   """Layer for calculating the similarity network
 
@@ -30,11 +23,20 @@ class CalculateSimilarity(Layer):
     super(CalculateSimilarity, self).__init__(name=name, trainable=trainable, **kwargs)
     self.metric = metric
     self.trainable = trainable
-    self.sample_matrix = tf.constant(value = sample_matrix, dtype=tf.float32)
+    self.sample_matrix = K.constant(value = sample_matrix, dtype=tf.float32, name="Similarity_Matrix")
+
+  def get_config(self):
+    config = super().get_config().copy()
+    config.update({
+       'metric': self.metric,
+       'trainable': self.trainable,
+       'sample_matrix': self.sample_matrix
+    })
+    return config
 
   def build(self, input_shape):
-     input_shape = tf.TensorShape(input_shape)
-     self.batch_size = input_shape[0]
+    #  input_shape = tf.TensorShape(input_shape)
+    self.batch_size = input_shape[0]
 
   def call(self, inputs):
     inputs = K.stack([inputs]*self.sample_matrix.shape[0], axis=-2) # b * (n) *f
@@ -57,8 +59,7 @@ class multichannel_network(Model):
         self.cell_line = list(set(i.split("_")[0] for i in train_sample_barcode))
         self.ds.save()
 
-    def build(self, input_shape):
-        
+        # Model Layers Constructor        
         # Molecular finger print, 881-dim sparse vector, Conv1D
         self.reshape_layer = Reshape(target_shape=(881,1))
         self.fp_conv1 = Conv1D(filters=4, kernel_size=8, activation='relu')

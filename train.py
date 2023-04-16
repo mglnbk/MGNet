@@ -23,8 +23,8 @@ ds = Dataset(
 # model parameters settings
 lr_rate = 0.001
 dropout_rate = .5
-batch_size = 32
-epochs = 10
+batch_size = 32 
+epochs = 1
 
 # Split train, test and validation set for training and testing, build generators
 partition = ds.split(validation=True)
@@ -68,7 +68,6 @@ model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=lr_rate),
                 Recall(name="recall"),
                 AUC(curve='ROC'),
                 AUC(curve='PR')
-                
               ]
             )
 
@@ -81,6 +80,5 @@ history = model.fit(
                     )
 
 scores = model.evaluate(x=test_generator) 
-
 print(list(scores))
 # save model
