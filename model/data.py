@@ -417,23 +417,23 @@ class DataGenerator(keras.utils.Sequence):
     def __data_generation(self, sample_barcode_temp):
         'Generates data containing batch_size samples' # X : (n_samples, *dim, n_channels)
         # Initialization
-        omics_feature = []
+        omics_feature = {}
         X_rdkit2d = np.empty((self.batch_size, self.drug_dim['rdkit2d']), dtype=np.float32)
         X_fingerprint = np.empty((self.batch_size, self.drug_dim['fingerprint']), dtype=np.float32)
-        omics_feature.append(X_fingerprint)
-        omics_feature.append(X_rdkit2d)
+        omics_feature['fingerprint']=X_fingerprint
+        omics_feature['rdkit2d']=X_rdkit2d
         if 'cnv' in list(self.omics_data.keys()):
             X_cnv = np.empty((self.batch_size, self.omics_dim['cnv']), dtype=np.float32)
-            omics_feature.append(X_cnv)
+            omics_feature['cnv']=X_cnv
         if 'gene_expression' in list(self.omics_data.keys()):
             X_expr = np.empty((self.batch_size, self.omics_dim['gene_expression']), dtype=np.float32)
-            omics_feature.append(X_expr)
+            omics_feature['gene_expression']=X_expr
         if 'mutation' in list(self.omics_data.keys()):
             X_mutation = np.empty((self.batch_size, self.omics_dim['mutation']), dtype=np.float32)
-            omics_feature.append(X_mutation)
+            omics_feature['mutation'] = X_mutation
         if 'methylation' in list(self.omics_data.keys()): 
             X_methylation = np.empty((self.batch_size, self.omics_dim['methylation']), dtype=np.float32)
-            omics_feature.append(X_methylation)
+            omics_feature['methylation'] = X_methylation
         
         y = np.empty((self.batch_size), dtype=int)
 

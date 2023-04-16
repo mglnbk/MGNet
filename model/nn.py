@@ -144,7 +144,7 @@ class multichannel_network(Model):
     def call(self, inputs):
         
         # Finger Print
-        x = inputs[0]
+        x = inputs['fingerprint']
         x = self.reshape_layer(x)
         x = self.fp_conv1(x)
         x = self.fp_bn1(x)
@@ -163,7 +163,7 @@ class multichannel_network(Model):
         x = self.fp_dropout(x)
 
         # Molecular 2D Rdkit
-        r = inputs[1]
+        r = inputs['rdkit2d']
         #r = self.rdkit_dense1(r)
         #r = self.rdkit_bn1(r)
         r = self.rdkit_dense2(r)
@@ -173,7 +173,7 @@ class multichannel_network(Model):
         feature = [x, r]
         # CNV
         if 'cnv' in self.ds.feature_contained:
-          c = inputs[2]
+          c = inputs['cnv']
           c = self.cnv_norm(c)
           c = self.similarity_layer_cnv(c)
           #c = self.cnv_dense1(c)
@@ -185,7 +185,7 @@ class multichannel_network(Model):
 
         # gene_expression 
         if 'gene_expression' in self.ds.feature_contained:
-          g = inputs[3]
+          g = inputs['gene_expression']
           g = self.gene_expression_norm(g)
           g = self.similarity_layer_expr(g)
           #g = self.gene_expression_dense1(g)
@@ -197,7 +197,7 @@ class multichannel_network(Model):
 
         # mutations
         if 'mutation' in self.ds.feature_contained:
-          mut = inputs[4]
+          mut = inputs['mutation']
           mut = self.mutation_norm(mut)
           mut = self.similarity_layer_mut(mut)
           #mut = self.mutations_dense1(mut)
@@ -209,7 +209,7 @@ class multichannel_network(Model):
 
         # methylation
         if 'methylation' in self.ds.feature_contained:
-          meth = inputs[5]
+          meth = inputs['methylation']
           meth = self.methylation_norm(meth)
           meth = self.similarity_layer_meth(meth)
           #meth = self.methylation_dense1(meth) 
