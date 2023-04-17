@@ -142,24 +142,24 @@ class Dataset():
         # Then preprocess omics data and response
         self.omics_data = self.preprocess_omics()
         self.response = self.prepare_response(res=self.target) # pd.DataFrame
-
         # Prepare keras dataset configurations, for training
         if set_label:
             y = []
-            for i in self.processed_experiment[self.target]:
+            for i in self.response[self.target]:
                 if (i<=self.threshold):
                     y.append(1)
                 else:
                     y.append(0)
             self.labels = {
-                _id:_y for _, (_id, _y) in enumerate(zip(self.response['SAMPLE_BARCODE'], y))
+                _id:_y for (_id, _y) in zip(self.response['SAMPLE_BARCODE'], y)
             }
         else:
             self.labels = {
                 _id:_y for _, (_id, _y) in enumerate(zip(self.response['SAMPLE_BARCODE'], self.processed_experiment[self.target]))
             }
         self.sample_barcode = list(self.response['SAMPLE_BARCODE'])
-    
+
+
     def split(self, rate=0.1, validation=True, seed = 42):
         """split train and test(or validation) dataset
 
@@ -298,8 +298,9 @@ class Dataset():
     def prepare_response(self, res) -> pd.DataFrame:
         response = pd.DataFrame()
         response['SAMPLE_BARCODE'] = self.processed_experiment['SAMPLE_BARCODE']
-        response['RESPONSE'] = self.processed_experiment[res]
-        response.reset_index(drop=True, inplace=True)
+        response[res] = self.processed_experiment[res]
+        response = response.groupby('SAMPLE_BARCODE').mean()
+        response.reset_index(inplace=True)
         return response
 
     def get_celline_barcode(self):
