@@ -40,6 +40,7 @@ def feature_ablation(feature, dataset="CTRP"):
 
         model = multichannel_network(
             dataset=ds,
+            train_sample_barcode=train,
             dropout=.5
         )
         model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=1e-3),
@@ -64,4 +65,5 @@ def feature_ablation(feature, dataset="CTRP"):
 
 
 if __name__ == "__main__":
+    tf.random.set_seed(42)
     feature_ablation(['cna', 'gene_expression'])

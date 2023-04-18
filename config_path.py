@@ -26,6 +26,7 @@ RAW_DRUG_CTRP_PATH = realpath('data/processed_data/drugs/CTRP_SMILES2CIDS.txt')
 RAW_DRUG_GDSC_PATH = realpath('data/processed_data/drugs/GDSC_SYNS2CIDS.txt')
 GDSC_NAME2SMILES_PATH = realpath('data/processed_data/drugs/GDSC_NAME2SMILES.csv')
 CTRP_SMILES2Canonical_PATH = realpath('data/processed_data/drugs/CTRP_SMILES2Canonical.csv')
+PRISM_DRUG_PATH = realpath("data/processed_data/drugs/PRISM_drugs.csv")
 
 ## PROCESSED_GDSC_PATH
 PROCESSED_FPKM_GDSC_PATH = realpath("data/processed_data/fpkm.csv")
