@@ -3,6 +3,7 @@ import numpy as np
 from os.path import realpath
 import sys
 from keras.models import load_model
+from tqdm import tqdm
 import ast
 from rdkit import Chem, RDLogger
 try:
@@ -138,7 +139,7 @@ def get_drug_feature(df):
     
     fingerprint = []
     rdkit_2d_normalized = []
-    for i in df['CanonicalSMILES']:
+    for i in tqdm(df['CanonicalSMILES']):
         fingerprint.append(smiles2pubchem(i))
         rdkit_2d_normalized.append(smiles2rdkit2d(i))
     fingerprint = np.array(fingerprint)

@@ -158,7 +158,7 @@ class Dataset():
                 _id:_y for _, (_id, _y) in enumerate(zip(self.response['SAMPLE_BARCODE'], self.processed_experiment[self.target]))
             }
         self.sample_barcode = list(self.response['SAMPLE_BARCODE'])
-
+        print(f"We have {len(self.sample_barcode)} samples in dataset...")
 
     def split(self, rate=0.1, validation=True, seed = 42):
         """split train and test(or validation) dataset

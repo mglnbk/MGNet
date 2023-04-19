@@ -7,6 +7,8 @@ import datetime
 from model.nn import multichannel_network
 from model.data import Dataset, DataGenerator
 from sklearn.utils import class_weight
+import warnings
+warnings.filterwarnings('ignore')
 import numpy as np
 
 # Dataset Setting: 
@@ -18,6 +20,7 @@ ds = Dataset(
     set_label=True, 
     response='AUC', 
     threshold=.58)
+ds.save()
 # CTRP, "AUC", 0.58, 0.001
 # GDSC, "AUC", .88, 0.001
 # model parameters settings
@@ -55,7 +58,8 @@ early_stop = EarlyStopping(monitor='val_loss', patience=10)
 
 # model building
 model = multichannel_network(
-    dataset=ds,
+    data=ds.omics_data,
+    feature_contained=ds.feature_contained,
     train_sample_barcode=train,
     dropout=dropout_rate
     )
