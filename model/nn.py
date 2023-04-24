@@ -1,6 +1,6 @@
 import tensorflow as tf
 import sys
-from keras import Model, layers
+from keras import Model, layers, regularizers
 from keras import backend as K
 from keras.layers import Conv1D, MaxPool1D, Dense, BatchNormalization
 from keras.layers import Flatten, Layer, Concatenate, Reshape
@@ -36,7 +36,7 @@ class CalculateSimilarity(Layer):
 
   def call(self, inputs):
     inputs = K.stack([inputs]*self.sample_matrix.shape[0], axis=-2) # b * (n) *f
-    inputs = tf.cast(inputs, tf.float32)
+    inputs = K.cast(inputs, tf.float32)
     gamma = K.constant(value = 0.001) # batch * feature
     inputs = K.exp(-gamma * K.sum(K.square(inputs-self.sample_matrix), axis=-1)) # (b) * n
     return inputs
@@ -53,30 +53,45 @@ class multichannel_network(Model):
         self.data = data
         self.feature_contained = feature_contained
         self.cell_line = list(set(i.split("_")[0] for i in train_sample_barcode))
+        self.regularize = {"kernel_regularizer": regularizers.l2(0.001),
+                           "bias_regularizer": regularizers.l2(0.001)}
+        self.encoded_feature = []
 
         # Model Layers Constructor        
         # Molecular finger print, 881-dim sparse vector, Conv1D
         self.reshape_layer = Reshape(target_shape=(881,1))
-        self.fp_conv1 = Conv1D(filters=4, kernel_size=8, activation='relu')
+        self.fp_conv1 = Conv1D(filters=4, 
+                               kernel_size=8, 
+                               activation='relu', 
+                               **self.regularize
+                               )
         self.fp_bn1 = BatchNormalization()
         self.fp_pool1 = MaxPool1D(3, 3)
-        self.fp_conv2 = Conv1D(filters=8, kernel_size=8, activation='relu')
+        self.fp_conv2 = Conv1D(filters=8, 
+                               kernel_size=8, 
+                               activation='relu', 
+                               **self.regularize)
         self.fp_bn2 = BatchNormalization()
         self.fp_pool2 = MaxPool1D(3, 3)
-        self.fp_conv3 = Conv1D(filters=16, kernel_size=8, activation='relu')
+        self.fp_conv3 = Conv1D(filters=16, 
+                               kernel_size=8, 
+                               activation='relu', 
+                               **self.regularize)
         self.fp_bn3 = BatchNormalization()
         self.fp_pool3 = MaxPool1D(3, 3)
         self.flatten = Flatten()
-        #self.fp_fc1 = Dense(512)
-        #self.fp_bn4 = BatchNormalization()
-        self.fp_fc2 = Dense(128)
+        self.fp_fc1 = Dense(512, activation='relu', **self.regularize)
+        self.fp_bn4 = BatchNormalization()
+        self.fp_fc2 = Dense(128, activation=None)
         self.fp_bn5 = BatchNormalization()
         self.fp_dropout = layers.Dropout(rate=self.dropout_rate)
 
         # Molecular 2D Component, 200-dim vector
-        #self.rdkit_dense1 = layers.Dense(units=512, activation='relu')
-        #self.rdkit_bn1 = layers.BatchNormalization()
-        self.rdkit_dense2 = layers.Dense(units=128, activation='relu')
+        self.rdkit_dense1 = layers.Dense(units=512,
+                                        activation='relu',
+                                        **self.regularize)
+        self.rdkit_bn1 = layers.BatchNormalization()
+        self.rdkit_dense2 = layers.Dense(units=128, activation=None)
         self.rdkit_bn2 = layers.BatchNormalization()
         self.rdkit_dropout = layers.Dropout(rate = self.dropout_rate)
 
@@ -86,9 +101,9 @@ class multichannel_network(Model):
           self.cnv_norm.adapt(data=self.data['cnv'].loc[self.cell_line].values)
 
           self.similarity_layer_cnv = CalculateSimilarity(sample_matrix=self.data['cnv'].loc[self.cell_line])
-          #self.cnv_dense1 = layers.Dense(units=512, activation='relu')
-          #self.cnv_bn1 = layers.BatchNormalization()
-          self.cnv_dense2 = layers.Dense(units=128, activation='relu')
+          self.cnv_dense1 = layers.Dense(units=512, activation='relu', **self.regularize)
+          self.cnv_bn1 = layers.BatchNormalization()
+          self.cnv_dense2 = layers.Dense(units=128, activation=None)
           self.cnv_bn2 = layers.BatchNormalization()
           self.cnv_dropout = layers.Dropout(rate = self.dropout_rate)
 
@@ -98,9 +113,9 @@ class multichannel_network(Model):
           self.gene_expression_norm.adapt(data=self.data['gene_expression'].loc[self.cell_line].values)
 
           self.similarity_layer_expr = CalculateSimilarity(sample_matrix=self.data['gene_expression'].loc[self.cell_line])
-          #self.gene_expression_dense1 = layers.Dense(units=512, activation='relu')
-          #self.gene_expression_bn1 = layers.BatchNormalization()
-          self.gene_expression_dense2 = layers.Dense(units=128, activation='relu')
+          self.gene_expression_dense1 = layers.Dense(units=512, activation='relu', **self.regularize)
+          self.gene_expression_bn1 = layers.BatchNormalization()
+          self.gene_expression_dense2 = layers.Dense(units=128, activation=None)
           self.gene_expression_bn2 = layers.BatchNormalization()
           self.gene_expression_dropout = layers.Dropout(rate = self.dropout_rate)
         
@@ -110,9 +125,9 @@ class multichannel_network(Model):
           self.mutation_norm.adapt(data=self.data['mutation'].loc[self.cell_line].values)
 
           self.similarity_layer_mut = CalculateSimilarity(sample_matrix=self.data['mutation'].loc[self.cell_line])
-          #self.mutations_dense1 = layers.Dense(units=512, activation='relu')
-          #self.mutations_bn1 = layers.BatchNormalization()
-          self.mutations_dense2 = layers.Dense(units=128, activation='relu')
+          self.mutations_dense1 = layers.Dense(units=512, activation='relu', **self.regularize)
+          self.mutations_bn1 = layers.BatchNormalization()
+          self.mutations_dense2 = layers.Dense(units=128, activation=None)
           self.mutations_bn2 = layers.BatchNormalization()
           self.mutations_dropout = layers.Dropout(rate = self.dropout_rate)
 
@@ -122,15 +137,15 @@ class multichannel_network(Model):
           self.methylation_norm.adapt(data=self.data['methylation'].loc[self.cell_line].values)
 
           self.similarity_layer_meth = CalculateSimilarity(sample_matrix=self.data['methylation'].loc[self.cell_line])
-          #self.methylation_dense1 = layers.Dense(units=512, activation='relu')
-          #self.methylation_bn1 = layers.BatchNormalization()
-          self.methylation_dense2 = layers.Dense(units=128, activation='relu')
+          self.methylation_dense1 = layers.Dense(units=512, activation='relu', **self.regularize)
+          self.methylation_bn1 = layers.BatchNormalization()
+          self.methylation_dense2 = layers.Dense(units=128, activation=None)
           self.methylation_bn2 = layers.BatchNormalization()
           self.methylation_dropout = layers.Dropout(rate = self.dropout_rate)
 
         # Integration Layer
         self.concat = Concatenate()
-        #self.integration_dense1 = Dense(512, activation='relu')
+        self.integration_dense1 = Dense(512, activation='relu')
         self.intergration_bn1 = BatchNormalization()
         self.integration_dense2 = Dense(128, activation='relu')
         self.intergration_bn2 = BatchNormalization()
@@ -139,7 +154,7 @@ class multichannel_network(Model):
     def get_config(self):
       return super().get_config()
 
-    def call(self, inputs):
+    def call(self, inputs, training=None):
         
         # Finger Print
         x = inputs['fingerprint']
@@ -154,19 +169,21 @@ class multichannel_network(Model):
         x = self.fp_bn3(x)
         x = self.fp_pool3(x)
         x = self.flatten(x)
-        #x = self.fp_fc1(x)
-        #x = self.fp_bn4(x)
+        x = self.fp_fc1(x)
+        x = self.fp_bn4(x)
         x = self.fp_fc2(x)
         x = self.fp_bn5(x)
-        x = self.fp_dropout(x)
+        if training:
+          x = self.fp_dropout(x)
 
         # Molecular 2D Rdkit
         r = inputs['rdkit2d']
-        #r = self.rdkit_dense1(r)
-        #r = self.rdkit_bn1(r)
+        r = self.rdkit_dense1(r)
+        r = self.rdkit_bn1(r)
         r = self.rdkit_dense2(r)
         r = self.rdkit_bn2(r)
-        r = self.rdkit_dropout(r)
+        if training:
+          r = self.rdkit_dropout(r)
 
         feature = [x, r]
         # CNV
@@ -174,11 +191,12 @@ class multichannel_network(Model):
           c = inputs['cnv']
           c = self.cnv_norm(c)
           c = self.similarity_layer_cnv(c)
-          #c = self.cnv_dense1(c)
-          #c = self.cnv_bn1(c)
+          c = self.cnv_dense1(c)
+          c = self.cnv_bn1(c)
           c = self.cnv_dense2(c)
           c = self.cnv_bn2(c)
-          c = self.cnv_dropout(c)
+          if training:
+            c = self.cnv_dropout(c)
           feature.append(c)
 
         # gene_expression 
@@ -186,11 +204,12 @@ class multichannel_network(Model):
           g = inputs['gene_expression']
           g = self.gene_expression_norm(g)
           g = self.similarity_layer_expr(g)
-          #g = self.gene_expression_dense1(g)
-          #g = self.gene_expression_bn1(g)
+          g = self.gene_expression_dense1(g)
+          g = self.gene_expression_bn1(g)
           g = self.gene_expression_dense2(g)
           g = self.gene_expression_bn2(g)
-          g = self.gene_expression_dropout(g)
+          if training:
+            g = self.gene_expression_dropout(g)
           feature.append(g)
 
         # mutations
@@ -198,11 +217,12 @@ class multichannel_network(Model):
           mut = inputs['mutation']
           mut = self.mutation_norm(mut)
           mut = self.similarity_layer_mut(mut)
-          #mut = self.mutations_dense1(mut)
-          #mut = self.mutations_bn1(mut)
+          mut = self.mutations_dense1(mut)
+          mut = self.mutations_bn1(mut)
           mut = self.mutations_dense2(mut)
           mut = self.mutations_bn2(mut)
-          mut = self.mutations_dropout(mut)
+          if training:
+            mut = self.mutations_dropout(mut)
           feature.append(mut)
 
         # methylation
@@ -210,46 +230,23 @@ class multichannel_network(Model):
           meth = inputs['methylation']
           meth = self.methylation_norm(meth)
           meth = self.similarity_layer_meth(meth)
-          #meth = self.methylation_dense1(meth) 
-          #meth = self.methylation_bn1(meth)
+          meth = self.methylation_dense1(meth) 
+          meth = self.methylation_bn1(meth)
           meth = self.methylation_dense2(meth)
           meth = self.methylation_bn2(meth)
-          meth = self.methylation_dropout(meth)
+          if training:
+            meth = self.methylation_dropout(meth)
           feature.append(meth)
 
         # Concat
         if len(feature) == 2:
            raise RuntimeError("No features of cellines specified")
         output = self.concat(feature)
-        #output = self.integration_dense1(output)
+        if not training:
+          self.encoded_feature.append(output)
+        output = self.integration_dense1(output)
         output = self.intergration_bn1(output)
         output = self.integration_dense2(output)
         output = self.intergration_bn2(output)
         output = self.integration_dense3(output)
-
         return output
-
-if __name__ == "__main__":
-   _model = multichannel_network()
-   from numpy.random import default_rng
-
-   fingerprint_input_shape = (10, 881)
-   rdkit2d_input_shape = (10, 200)
-   cnv_input_shape = (10, _model.ds.cnv.shape[1])
-   mutation_input_shape = (10, _model.ds.mutation.shape[1])
-   gene_expression_input_shape = (10, _model.ds.fpkm.shape[1])
-   methylation_input_shape = (10, _model.ds.methylation.shape[1])
-
-   fingerprint = default_rng(42).random(fingerprint_input_shape)
-   rdkit2d = default_rng(42).random(rdkit2d_input_shape)
-   cnv = default_rng(42).random(cnv_input_shape)
-   gene_expression = default_rng(42).random(gene_expression_input_shape)
-   mutation = default_rng(42).random(mutation_input_shape)
-   methylation = default_rng(42).random(methylation_input_shape)
-
-   from keras.utils import plot_model
-
-   output = _model([fingerprint, rdkit2d, cnv, gene_expression, mutation, methylation])
-  
-   _model.summary()
-   print(output)

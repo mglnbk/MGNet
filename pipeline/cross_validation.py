@@ -26,26 +26,14 @@ ds = Dataset(
     response='AUC', 
     threshold=.58)
 
-# model parameters settings
-lr_rate = 1e-3
+# training parameters settings
+lr_rate = 1e-2
 dropout_rate = .5
 batch_size = 64
-epochs = 10
+epochs = 20
 
-# Split train, test and validation set for training and testing, build generators
-partition = ds.split(validation=True)
-train = partition['train']
-test = partition['test']
-validation = partition['validation']
-train_generator = DataGenerator(sample_barcode=train, **ds.get_config(), batch_size=batch_size)
-validation_generator = DataGenerator(sample_barcode=validation, **ds.get_config(), batch_size=batch_size)
-test_generator = DataGenerator(sample_barcode=test, **ds.get_config(), batch_size=batch_size)
+# log parameters
 
-# Training parameters
-class_weights = class_weight.compute_class_weight(class_weight='balanced',
-                                                 classes=np.unique([ds.labels[x] for x in train]),
-                                                 y=[ds.labels[x] for x in train])
-weights_dict = {i:w for i,w in enumerate(class_weights)}
 log_dir = "logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
 def scheduler(epoch, lr):
@@ -54,8 +42,6 @@ def scheduler(epoch, lr):
     else:
         return lr
 reduce_lr = LearningRateScheduler(scheduler)
-# reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.2,
-#                               patience=5, min_lr=0.001)
 early_stop = EarlyStopping(monitor='val_loss', patience=10)
 
 def cross_validation(k_fold=5):
@@ -71,9 +57,15 @@ def cross_validation(k_fold=5):
 
         train_generator = DataGenerator(sample_barcode=train, **ds.get_config(), batch_size=batch_size)
         test_generator = DataGenerator(sample_barcode=test, **ds.get_config(), batch_size=batch_size)
+        
+        class_weights = class_weight.compute_class_weight(class_weight='balanced',
+                                                 classes=np.unique([ds.labels[x] for x in train]),
+                                                 y=[ds.labels[x] for x in train])
+        weights_dict = {i:w for i,w in enumerate(class_weights)}
 
         model = multichannel_network(
-            dataset=ds,
+            datat=ds.omics_data,
+            feature_contained=['gene_expression', 'cnv', 'methylation', 'mutation'],
             train_sample_barcode=train,
             dropout=.5
         )
@@ -91,8 +83,7 @@ def cross_validation(k_fold=5):
         tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
         history = model.fit(x=train_generator, 
                     epochs=epochs,
-                    #validation_data=test_generator, 
-                    callbacks=[reduce_lr, early_stop, tensorboard_callback],
+                    callbacks=[reduce_lr, tensorboard_callback],
                     class_weight = weights_dict
                     )
         
@@ -100,7 +91,7 @@ def cross_validation(k_fold=5):
         result.append(list(scores))
         print(result)
         dataset_name = ds.dataset
-        model.save(filepath=join(RESULT_PATH, f"{idx}_{k_fold}_{dataset_name}_fold_model"), save_format='tf')
+        tf.saved_model.save(model, f'{dataset_name}_{lr_rate}_5-0.1_{batch_size}_{epochs}_all')
     
     feature_name = "_".join(FEATURE)
     response = ds.target

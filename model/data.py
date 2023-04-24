@@ -10,6 +10,7 @@ from config_path import *
 from model.drug import Drug
 from os.path import join
 from sklearn.model_selection import train_test_split, StratifiedKFold
+from itertools import product
 import h5py
 
 # 注：min-Max归一化需要在分割完训练集和测试集和Validation set之后再进行
@@ -160,18 +161,19 @@ class Dataset():
         self.sample_barcode = list(self.response['SAMPLE_BARCODE'])
         print(f"We have {len(self.sample_barcode)} samples in dataset...")
 
-    def split(self, rate=0.1, validation=True, seed = 42):
+    def split(self, data, rate=0.1, validation=True, seed = 42):
         """split train and test(or validation) dataset
 
         Args:
             rate (float, optional): test_size. Defaults to 0.1.
             validation (bool, optional): val or not. Defaults to True.
+            data (list)
 
         Returns:
             dict: sample_barcode dict named partition['train', 'test', 'validation']
         """
         if validation==True:
-            sample_train, sample_test = train_test_split(self.sample_barcode,
+            sample_train, sample_test = train_test_split(data,
                                                          test_size=rate*2,
                                                          random_state=seed)
             sample_test, sample_validation = train_test_split(sample_test,
@@ -184,7 +186,7 @@ class Dataset():
             }
             return partition
         else:
-            sample_train, sample_test = train_test_split(self.sample_barcode,
+            sample_train, sample_test = train_test_split(data,
                                                          test_size=rate,
                                                          random_state=seed)
             partition = {
@@ -193,6 +195,28 @@ class Dataset():
             }
             return partition
         
+    def drug_blindtest_split(self, rate=0.1, validation=True, seed=42):
+        all_drug = list(set(i.split("_")[1] for i in self.sample_barcode))
+        all_celline = list(set(i.split("_")[0] for i in self.sample_barcode))
+        partition = self.split(data=all_drug, rate=rate, validation=validation, seed=seed)
+        for name in partition.keys():
+            partition[name] = ["_".join((c,d)) for c, d in product(all_celline, partition[name])]
+        for name in partition.keys():
+            partition[name] = list(set(partition[name]).intersection(set(self.sample_barcode)))
+
+        return partition
+    
+    def ccl_blindtest_split(self, rate=0.1, validation=True, seed=42):
+        all_drug = list(set(i.split("_")[1] for i in self.sample_barcode))
+        all_celline = list(set(i.split("_")[0] for i in self.sample_barcode))
+        partition = self.split(data=all_celline, rate=rate, validation=validation, seed=seed)
+        for name in partition.keys():
+            partition[name] = ["_".join((c,d)) for c, d in product(partition[name], all_drug)]
+        for name in partition.keys():
+            partition[name] = list(set(partition[name]).intersection(set(self.sample_barcode)))
+
+        return partition
+
     def k_fold(self, k, seed=42):
         """return k-fold sample_barcode list, Note that k cant be
             greater than number of samples in each class
