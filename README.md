@@ -7,12 +7,10 @@ For undergraduate thesis design
 4. 药物数据CTRP: Done
 5. 对训练集和数据集分别作Min-Max归一化: Done
 6. 增添一组Validation实验: Done
-7. 增添一个feature ablation实验: WIP
-8. 增添一个对一种特定药物的重定位的研究实验: WIP
-9. 对不同类型特征的重要性分析，可以做消融实验: WIP
-11. 最后除了分类还可以进行回归任务，再进行分析 regression versus classification: Issues
-12. Rank the drug tested for a specific drug
-13. 可以对药物进行聚类分析，聚类分析后看看该模型对那些药物敏感性更好
+7. 增添一个feature ablation实验, 对不同类型特征的重要性分析，可以做消融实验: Done
+8. 增添一个对一种特定药物的重定位的研究实验: Done
+9. Rank the drug tested for a specific drug：Done
+10. 可以对网络中间特征进行聚类分析、热图分析后看看哪些细胞对那些药物敏感性更好，是否模型的中间特征具有预测效能：Done
 
 
 Download URL Instruction
