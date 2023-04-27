@@ -64,7 +64,8 @@ def cross_validation(k_fold=5):
         weights_dict = {i:w for i,w in enumerate(class_weights)}
 
         model = multichannel_network(
-            datat=ds.omics_data,
+            data=ds.omics_data,
+            drug_data=ds.drug_info,
             feature_contained=['gene_expression', 'cnv', 'methylation', 'mutation'],
             train_sample_barcode=train,
             dropout=.5

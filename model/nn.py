@@ -7,6 +7,7 @@ from keras.layers import Flatten, Layer, Concatenate, Reshape
 from keras.layers import Normalization
 from pathlib import Path
 from os.path import realpath
+from sklearn.preprocessing import StandardScaler
 path = Path(__file__).parent.parent.absolute()
 sys.path.append(realpath(path)) # Project root folder
 from config_path import *
@@ -44,6 +45,7 @@ class CalculateSimilarity(Layer):
 class multichannel_network(Model):
     def __init__(self,
                  data,
+                 drug_data,
                  feature_contained,
                  train_sample_barcode,
                  dropout=.5
@@ -51,14 +53,18 @@ class multichannel_network(Model):
         super().__init__(self)
         self.dropout_rate = dropout
         self.data = data
+        self.drug_data = drug_data
         self.feature_contained = feature_contained
         self.cell_line = list(set(i.split("_")[0] for i in train_sample_barcode))
+        self.drug = list(set(i.split("_")[1] for i in train_sample_barcode)) 
         self.regularize = {"kernel_regularizer": regularizers.l2(0.001),
                            "bias_regularizer": regularizers.l2(0.001)}
         self.encoded_feature = []
 
         # Model Layers Constructor        
         # Molecular finger print, 881-dim sparse vector, Conv1D
+        self.fp_norm = Normalization(axis=-1)
+        self.fp_norm.adapt(data=self.drug_data.drug_feature['fingerprint'].loc[self.drug].values)
         self.reshape_layer = Reshape(target_shape=(881,1))
         self.fp_conv1 = Conv1D(filters=4, 
                                kernel_size=8, 
@@ -87,6 +93,8 @@ class multichannel_network(Model):
         self.fp_dropout = layers.Dropout(rate=self.dropout_rate)
 
         # Molecular 2D Component, 200-dim vector
+        self.rdkit_norm = Normalization(axis=-1)
+        self.rdkit_norm.adapt(data=self.drug_data.drug_feature['rdkit2d'].loc[self.drug].values)
         self.rdkit_dense1 = layers.Dense(units=512,
                                         activation='relu',
                                         **self.regularize)
@@ -99,8 +107,10 @@ class multichannel_network(Model):
         if 'cnv' in self.feature_contained:
           self.cnv_norm = Normalization(axis=-1)
           self.cnv_norm.adapt(data=self.data['cnv'].loc[self.cell_line].values)
-
-          self.similarity_layer_cnv = CalculateSimilarity(sample_matrix=self.data['cnv'].loc[self.cell_line])
+          self.cnv_scaler = StandardScaler()
+          self.similarity_layer_cnv = CalculateSimilarity(
+            sample_matrix=self.cnv_scaler.fit_transform(self.data['cnv'].loc[self.cell_line])
+                                                          )
           self.cnv_dense1 = layers.Dense(units=512, activation='relu', **self.regularize)
           self.cnv_bn1 = layers.BatchNormalization()
           self.cnv_dense2 = layers.Dense(units=128, activation=None)
@@ -112,7 +122,10 @@ class multichannel_network(Model):
           self.gene_expression_norm = Normalization(axis=-1)
           self.gene_expression_norm.adapt(data=self.data['gene_expression'].loc[self.cell_line].values)
 
-          self.similarity_layer_expr = CalculateSimilarity(sample_matrix=self.data['gene_expression'].loc[self.cell_line])
+          self.gene_expression_scaler = StandardScaler()
+          self.similarity_layer_expr = CalculateSimilarity(
+            sample_matrix=self.gene_expression_scaler.fit_transform(self.data['gene_expression'].loc[self.cell_line])
+            )
           self.gene_expression_dense1 = layers.Dense(units=512, activation='relu', **self.regularize)
           self.gene_expression_bn1 = layers.BatchNormalization()
           self.gene_expression_dense2 = layers.Dense(units=128, activation=None)
@@ -124,7 +137,10 @@ class multichannel_network(Model):
           self.mutation_norm = Normalization(axis=-1)
           self.mutation_norm.adapt(data=self.data['mutation'].loc[self.cell_line].values)
 
-          self.similarity_layer_mut = CalculateSimilarity(sample_matrix=self.data['mutation'].loc[self.cell_line])
+          self.mutation_scaler = StandardScaler()
+          self.similarity_layer_mut = CalculateSimilarity(
+            sample_matrix=self.mutation_scaler.fit_transform(self.data['mutation'].loc[self.cell_line])
+            )
           self.mutations_dense1 = layers.Dense(units=512, activation='relu', **self.regularize)
           self.mutations_bn1 = layers.BatchNormalization()
           self.mutations_dense2 = layers.Dense(units=128, activation=None)
@@ -135,8 +151,10 @@ class multichannel_network(Model):
         if 'methylation' in self.feature_contained:
           self.methylation_norm = Normalization(axis=-1)
           self.methylation_norm.adapt(data=self.data['methylation'].loc[self.cell_line].values)
-
-          self.similarity_layer_meth = CalculateSimilarity(sample_matrix=self.data['methylation'].loc[self.cell_line])
+          self.methylation_scaler = StandardScaler()
+          self.similarity_layer_meth = CalculateSimilarity(
+            sample_matrix=self.methylation_scaler.fit_transform(self.data['methylation'].loc[self.cell_line])
+            )
           self.methylation_dense1 = layers.Dense(units=512, activation='relu', **self.regularize)
           self.methylation_bn1 = layers.BatchNormalization()
           self.methylation_dense2 = layers.Dense(units=128, activation=None)
@@ -158,6 +176,7 @@ class multichannel_network(Model):
         
         # Finger Print
         x = inputs['fingerprint']
+        x = self.fp_norm(x)
         x = self.reshape_layer(x)
         x = self.fp_conv1(x)
         x = self.fp_bn1(x)
@@ -178,6 +197,7 @@ class multichannel_network(Model):
 
         # Molecular 2D Rdkit
         r = inputs['rdkit2d']
+        r = self.rdkit_norm(r)
         r = self.rdkit_dense1(r)
         r = self.rdkit_bn1(r)
         r = self.rdkit_dense2(r)
