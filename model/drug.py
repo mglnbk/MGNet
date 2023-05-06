@@ -18,6 +18,8 @@ sys.path.append(realpath(path)) # Project root folder
 from utils.pybiomed import calcPubChemFingerAll
 from config_path import *
 import json, requests
+from model.data import *
+from tqdm import tqdm
 
 
 RDLogger.DisableLog("rdApp.*")
@@ -178,7 +180,7 @@ def smiles2canonical(smiles):
     response = requests.get(url)
     if response.status_code == 200:
         d = json.loads(response.content)
-        print(d)
+        # print(d)
         cid = d['PropertyTable']['Properties'][0].get('CID', None)
         smiles = d['PropertyTable']['Properties'][0].get('CanonicalSMILES', None)
         return (str(cid), str(smiles))
@@ -208,41 +210,46 @@ def prepare_smiles2canonical():
     print("done")
     return df
 
-def prepare_name2smiles():
-    gdsc_drug_df = pd.read_csv(GDSC_DRUG_PATH).astype(str)
+def prepare_name2smiles(df_):
+    # gdsc_drug_df = pd.read_csv(GDSC_DRUG_PATH).astype(str)
+    gdsc_drug_df = df_
     smiles = []
     cid_list = []
-    for idx, i in enumerate(list(gdsc_drug_df['DRUG_NAME'])):
-        print(i)
+    for i in tqdm(list(gdsc_drug_df['DRUG_NAME'])):
+        # print(i)
         r = name2smiles(i)
         cid_list.append(r[0])
         smiles.append(r[1])
     df = pd.DataFrame(index=gdsc_drug_df['DRUG_NAME'])
     df['CanonicalSMILES'] = smiles
     df['CID'] = cid_list
-    df.to_csv(GDSC_NAME2SMILES_PATH)
+    df.to_csv("./name2smiles.csv")
+    # GDSC_NAME2SMILES_PATH 
     print("done")
          
 # CIDs are all extracted from PubChem Id Convertors
 class Drug:
     def __init__(self):
         print("Begin loading drug data...")
-        gdsc_filter = pd.read_csv(GDSC_NAME2SMILES_PATH, dtype=('str', 'str'), index_col=0)
-        gdsc_filter = gdsc_filter[gdsc_filter['CanonicalSMILES'] != 'None']
-        gdsc_filter.dropna(inplace=True)
+        # gdsc_filter = pd.read_csv(GDSC_NAME2SMILES_PATH, dtype=('str', 'str'), index_col=0)
+        # gdsc_filter = gdsc_filter[gdsc_filter['CanonicalSMILES'] != 'None']
+        # gdsc_filter.dropna(inplace=True)
 
-        ctrp_filter = pd.read_csv(CTRP_SMILES2Canonical_PATH, dtype=('str', 'str'), index_col=0)
-        ctrp_filter = ctrp_filter[ctrp_filter['CanonicalSMILES'] != 'None']
-        ctrp_filter.dropna(inplace=True)
+        # ctrp_filter = pd.read_csv(CTRP_SMILES2Canonical_PATH, dtype=('str', 'str'), index_col=0)
+        # ctrp_filter = ctrp_filter[ctrp_filter['CanonicalSMILES'] != 'None']
+        # ctrp_filter.dropna(inplace=True)
 
-        self.gdsc_filter = gdsc_filter # cols = ['CanonicalSMILES', 'CID']
-        self.ctrp_filter = ctrp_filter # cols = ['CanonicalSMILES', 'CID']
+        # self.gdsc_filter = gdsc_filter # cols = ['CanonicalSMILES', 'CID']
+        # self.ctrp_filter = ctrp_filter # cols = ['CanonicalSMILES', 'CID']
 
-        print(f"After filtering, GDSC has tested {len(self.gdsc_filter)} drugs; CTRP has tested {len(self.ctrp_filter)} drugs")
+        # print(f"After filtering, GDSC has tested {len(self.gdsc_filter)} drugs; CTRP has tested {len(self.ctrp_filter)} drugs")
 
-        self.all_drugs = pd.concat([self.gdsc_filter, self.ctrp_filter])
-        self.all_drugs = self.all_drugs[~self.all_drugs.index.duplicated(keep='first')]
-        print(f"After combining, unique cid number is {len(self.all_drugs)}")
+        # self.all_drugs = pd.concat([self.gdsc_filter, self.ctrp_filter])
+        # self.all_drugs = self.all_drugs[~self.all_drugs.index.duplicated(keep='first')]
+        all_drug = pd.read_csv(NAME2SMILES_PATH, dtype={"DRUG_NAME": str, 'CanonicalSMILES': str, 'CID': str})
+        all_drug = all_drug.dropna()
+        self.all_drugs = all_drug.set_index('DRUG_NAME')
+        print(f"After combining and alignment, unique cid number is {len(self.all_drugs)}")
         # import pubchempy as pcp
         # te = pcp.get_properties(properties=['canonical_smiles'], 
         #                         identifier=list(self.all_cids['CID']),
@@ -255,5 +262,11 @@ class Drug:
 
 
 if __name__ == "__main__":
-     d = Drug()
+    df1 = load_data_experiment("GDSC")
+    df2 = load_data_experiment("CTRP")
+    df = pd.concat([df1, df2])
+    drug_df = pd.DataFrame()
+    drug_df['DRUG_NAME'] = list(set(df['DRUG_NAME']))
+    prepare_name2smiles(drug_df)
+
      

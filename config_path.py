@@ -1,8 +1,9 @@
 from os.path import realpath
 # data_path definition
+ALL_MODEL_PATH = realpath("data/raw_data/model_list_20230307.csv")
 
 # RAW_GDSC
-RAW_EXPERIMENT_GDSC_PATH = realpath("data/raw_data/GDSC2_drug_dose_cellines_IC50s.xlsx")
+RAW_EXPERIMENT_GDSC_PATH = realpath("data/raw_data/Drug_sensitivity_AUC_(Sanger_GDSC2).csv")
 RAW_COMPOUND_GDSC_PATH = realpath("data/raw_data/all_compounds_screened.csv")
 RAW_CELLINE_GDSC_PATH = realpath("data/raw_data/all_cellines_screened.xlsx")
 
@@ -14,7 +15,7 @@ RAW_SENTRIX2SAMPLE_GDSC_PATH = realpath("data/raw_data/methSampleId_2_cosmicIds.
 RAW_SNV_GDSC_PATH = realpath("data/raw_data/mutations_all_20230202.csv")
 
 ### RAW_CTRP
-RAW_EXPERIMENT_CTRP_PATH = realpath("data/raw_data/CTRPv2.0/v20.data.curves_post_qc.txt")
+RAW_EXPERIMENT_CTRP_PATH = realpath("data/raw_data/CTRPv2.0/Drug_sensitivity_AUC_(CTD^2).csv")
 RAW_CELLINE_CTRP_PATH = realpath("data/raw_data/CTRPv2.0/v20.meta.per_cell_line.txt")
 RAW_COMPOUND_CTRP_PATH = realpath("data/raw_data/CTRPv2.0/v20.meta.per_compound.txt")
 RAW_META_EXPERIMENT_CTRP_PATH = realpath("data/raw_data/CTRPv2.0/v20.meta.per_experiment.txt")
@@ -24,7 +25,7 @@ GDSC_DRUG_PATH = realpath('data/raw_data/screened_compounds_rel_8.4.csv')
 CTRP_DRUG_PATH = realpath('data/raw_data/CTRPv2.0/v20.meta.per_compound.txt')
 RAW_DRUG_CTRP_PATH = realpath('data/processed_data/drugs/CTRP_SMILES2CIDS.txt')
 RAW_DRUG_GDSC_PATH = realpath('data/processed_data/drugs/GDSC_SYNS2CIDS.txt')
-GDSC_NAME2SMILES_PATH = realpath('data/processed_data/drugs/GDSC_NAME2SMILES.csv')
+NAME2SMILES_PATH = realpath('data/raw_data/name2smiles.csv')
 CTRP_SMILES2Canonical_PATH = realpath('data/processed_data/drugs/CTRP_SMILES2Canonical.csv')
 PRISM_DRUG_PATH = realpath("data/processed_data/drugs/PRISM_drugs.csv")
 

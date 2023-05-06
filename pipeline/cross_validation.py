@@ -25,12 +25,12 @@ ds = Dataset(
     set_label=True, 
     response='AUC', 
     threshold=.58)
-
+ds.save()
 # training parameters settings
 lr_rate = 1e-2
 dropout_rate = .5
 batch_size = 64
-epochs = 20
+epochs = 15
 
 # log parameters
 

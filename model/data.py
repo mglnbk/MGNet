@@ -10,20 +10,25 @@ from config_path import *
 from model.drug import Drug
 from os.path import join
 from sklearn.model_selection import train_test_split, StratifiedKFold
+from sklearn.preprocessing import MinMaxScaler
 from itertools import product
 import h5py
 
+
+all_model = pd.read_csv(ALL_MODEL_PATH)
 # 注：min-Max归一化需要在分割完训练集和测试集和Validation set之后再进行
 
 def load_data_cna(data_path) -> pd.DataFrame:
     print("Loading Copy Number Abberation Data...")
     all_cna = pd.read_csv(data_path, low_memory=False,
-                    skiprows=lambda x: x in [0, 2])
-    all_cna = all_cna.drop(columns=['model_name'])
+                    skiprows=lambda x: x in [1, 2])
+    all_cna = all_cna.drop(columns=['model_id'])
     all_cna.rename(columns={"Unnamed: 1": "celline_barcode"}, inplace=True)
     all_cna.set_index('celline_barcode', inplace=True)
     all_cna = all_cna.T
     all_cna.fillna(0.0, inplace=True)
+    all_cna = all_cna.join(all_model[['model_id', 'BROAD_ID']].set_index('model_id'), on=all_cna.index)
+    all_cna.set_index(['BROAD_ID'], drop=True, inplace=True)
     print("Loading Copy Number Abberation Data Done")
     
     return all_cna
@@ -38,42 +43,58 @@ def load_data_celline(celline_data_path, data_source) -> pd.DataFrame:
 def load_data_fpkm(data_path) -> pd.DataFrame:
     print("Loading Gene Expression Data...")
     all_fpkm = pd.read_csv(data_path, low_memory=False,
-                    skiprows=lambda x: x in [0, 2, 3, 4])
-    all_fpkm = all_fpkm.drop(columns=['model_name'])
+                    skiprows=lambda x: x in [1, 2, 3, 4])
+    all_fpkm = all_fpkm.drop(columns=['model_id'])
     all_fpkm.rename(columns={"Unnamed: 1": "celline_barcode"}, inplace=True)
     all_fpkm.set_index('celline_barcode', inplace=True)
     all_fpkm = all_fpkm.T
     all_fpkm.fillna(0.0, inplace=True)
+    all_fpkm = all_fpkm.join(all_model[['model_id', 'BROAD_ID']].set_index('model_id'), on=all_fpkm.index)
+    all_fpkm.set_index(['BROAD_ID'], drop=True, inplace=True)
     print("Loading Gene Expression Data Done")
     return all_fpkm
 
-def load_data_experiment(data_path, data_source) -> pd.DataFrame:
+def load_data_experiment(data_source) -> pd.DataFrame:
     
     if data_source == "GDSC":
         print("Loading GDSC Experiment Data...")
-        experiment = pd.read_excel(data_path)
-        experiment = experiment[['DATASET', 'CELL_LINE_NAME', 'DRUG_NAME', 'LN_IC50', 'AUC']]
+        # experiment = pd.read_excel(data_path)
+        # experiment = experiment[['DATASET', 'CELL_LINE_NAME', 'DRUG_NAME', 'LN_IC50', 'AUC']]
+        df = pd.read_csv(RAW_EXPERIMENT_GDSC_PATH)
+        df = df.set_index(['depmap_id'])[df.columns[6::]].melt(ignore_index=False).dropna()
+        experiment = pd.DataFrame()
+        experiment['CELLINE_BARCODE'] = df.index
+        experiment['DRUG_NAME'] = [i.split(" ")[0] for i in df['variable']]
+        experiment['DATASET'] = ['GDSC2']*len(df)
+        experiment['AUC'] = list(df['value'])
     if data_source == "CTRP":
         print("Loading CTRP Experiment Data...")
-        experiment = pd.read_csv(RAW_EXPERIMENT_CTRP_PATH, sep='\t')
-        meta_celline = pd.read_csv(RAW_CELLINE_CTRP_PATH, sep="\t")
-        meta_experiment = pd.read_csv(RAW_META_EXPERIMENT_CTRP_PATH, sep='\t')
-        meta_compound = pd.read_csv(RAW_COMPOUND_CTRP_PATH, sep='\t')
-        meta_celline = meta_celline[['master_ccl_id', 'ccl_name']]
-        meta_compound = meta_compound[['master_cpd_id', 'cpd_name', 'cpd_smiles']]
-        meta_experiment = meta_experiment[['experiment_id','master_ccl_id']]
-        experiment = experiment[['experiment_id', 'area_under_curve', 'master_cpd_id']]
-        experiment = experiment.join(meta_experiment.set_index('experiment_id'), on='experiment_id',how='inner')
-        experiment = experiment.join(meta_compound.set_index('master_cpd_id'), on='master_cpd_id',how='inner')
-        experiment = experiment.join(meta_celline.set_index('master_ccl_id'), on='master_ccl_id', how='inner')
-        experiment = experiment[['cpd_name', 
-                                 'cpd_smiles', 'ccl_name', 
-                                 'area_under_curve'
-                                 ]]
-        experiment['DATASET'] = ['CTRP']*len(experiment)
-        experiment.rename(columns={"cpd_name": "DRUG_NAME", "ccl_name":"CELL_LINE_NAME",
-                           "cpd_smiles": "SMILES", "area_under_curve": "AUC"}, inplace=True)
-    print("Loading Experiment Data Done")
+        df = pd.read_csv(RAW_EXPERIMENT_CTRP_PATH, sep='\t')
+        # meta_celline = pd.read_csv(RAW_CELLINE_CTRP_PATH, sep="\t")
+        # meta_experiment = pd.read_csv(RAW_META_EXPERIMENT_CTRP_PATH, sep='\t')
+        # meta_compound = pd.read_csv(RAW_COMPOUND_CTRP_PATH, sep='\t')
+        # meta_celline = meta_celline[['master_ccl_id', 'ccl_name']]
+        # meta_compound = meta_compound[['master_cpd_id', 'cpd_name', 'cpd_smiles']]
+        # meta_experiment = meta_experiment[['experiment_id','master_ccl_id']]
+        # experiment = experiment[['experiment_id', 'area_under_curve', 'master_cpd_id']]
+        # experiment = experiment.join(meta_experiment.set_index('experiment_id'), on='experiment_id',how='inner')
+        # experiment = experiment.join(meta_compound.set_index('master_cpd_id'), on='master_cpd_id',how='inner')
+        # experiment = experiment.join(meta_celline.set_index('master_ccl_id'), on='master_ccl_id', how='inner')
+        # experiment = experiment[['cpd_name', 
+        #                          'cpd_smiles', 'ccl_name', 
+        #                          'area_under_curve'
+        #                          ]]
+        # experiment['DATASET'] = ['CTRP']*len(experiment)
+        # experiment.rename(columns={"cpd_name": "DRUG_NAME", "ccl_name":"CELL_LINE_NAME",
+        #                    "cpd_smiles": "SMILES", "area_under_curve": "AUC"}, inplace=True)
+        df = pd.read_csv(RAW_EXPERIMENT_CTRP_PATH)
+        df = df.set_index(['depmap_id'])[df.columns[6::]].melt(ignore_index=False).dropna()
+        experiment = pd.DataFrame()
+        experiment['CELLINE_BARCODE'] = df.index
+        experiment['DRUG_NAME'] = [i.split(" ")[0] for i in df['variable']]
+        experiment['DATASET'] = ['CTRP']*len(df)
+        experiment['AUC'] = list(df['value'])
+    print("Loading Experiment Data Done") 
     return experiment
 
 def load_data_methylation(data_path) -> pd.DataFrame:
@@ -86,6 +107,9 @@ def load_data_methylation(data_path) -> pd.DataFrame:
     met_df = met_df.T
     met_df = met_df.reset_index().drop_duplicates(subset='index', keep='first').rename(columns={'index': 'celline'})
     met_df = met_df.set_index('celline')
+    met_df = met_df = met_df.join(all_model[['model_name', 'BROAD_ID']].set_index('model_name'), on='celline', how='inner')
+    met_df.dropna(subset=['BROAD_ID'], inplace=True)
+    met_df.set_index('BROAD_ID', inplace=True, drop=True)
     print("Loading Methylation Data Done")
     return met_df
 
@@ -94,14 +118,17 @@ def load_data_mutation(data_path) -> pd.DataFrame:
     mutation_df = pd.read_csv(data_path, low_memory=False)
     important_only = ['cds_disrupted','complex_sub','downstream', 'ess_splice','frameshift','missense','nonsense','silent','splice_region','start_lost','stop_lost','upstream']
     mutation_df = mutation_df[mutation_df['effect'].isin(important_only)]
-    df_table = pd.pivot_table(data=mutation_df, 
-                                index='model_name', 
+    df =  pd.pivot_table(data=mutation_df, 
+                                index='model_id', 
                                 columns='gene_symbol', 
                                 values='effect',
                                 aggfunc='count',
                                 fill_value=0)
+    df = df.join(all_model[['model_id', 'BROAD_ID']].set_index('model_id'), on='model_id', how='inner')
+    df.dropna(inplace=True)
+    df.set_index('BROAD_ID', inplace=True, drop=True)
     print("Loading Mutations Data Done")
-    return df_table
+    return df
 
 
 class Dataset():
@@ -135,7 +162,7 @@ class Dataset():
 
         self.drug_info = Drug()
         # self.celline = load_data_celline(RAW_CELLINE_GDSC_PATH, "GDSC")
-        self.experiment = load_data_experiment(RAW_EXPERIMENT_GDSC_PATH, self.dataset)
+        self.experiment = load_data_experiment(self.dataset)
         # First to preprocess experiment data matrix !
         self.celline_barcode = self.get_celline_barcode()
         self.processed_experiment = self.preprocess_experiment()
@@ -263,7 +290,7 @@ class Dataset():
         print("Begin Preprocessing Experiment!")
         # Experiment Preprocess, align with celline_barcode and search pubchem_id
         print("Select Overlapping Cellines...")
-        all_experiment = self.experiment[self.experiment['CELL_LINE_NAME'].isin(self.celline_barcode)]
+        all_experiment = self.experiment[self.experiment['CELLINE_BARCODE'].isin(self.celline_barcode)]
         all_experiment.reset_index(drop=True, inplace = True)
         print(all_experiment.columns)
         print("Select Overlapping Cellines with available PubChem CIDs...")
@@ -277,12 +304,11 @@ class Dataset():
             all_experiment.reset_index(drop=True, inplace=True)
 
         print("Create Unique Sample Barcode...")
-        sample_barcode = [f"{i[0]}_{i[1]}" for i in zip(all_experiment['CELL_LINE_NAME'], all_experiment['DRUG_NAME'])]
+        sample_barcode = [f"{i[0]}_{i[1]}" for i in zip(all_experiment['CELLINE_BARCODE'], all_experiment['DRUG_NAME'])]
         all_experiment['SAMPLE_BARCODE'] = sample_barcode
 
         # Normalization if needed
-        if self.target == "LN_IC50" or self.dataset == "CTRP":
-            all_experiment[self.target]=(all_experiment[self.target]-all_experiment[self.target].min())/(all_experiment[self.target].max()-all_experiment[self.target].min())
+        all_experiment[self.target]=MinMaxScaler().fit_transform(X = all_experiment[[self.target]].values)
         
         # Exclude outliers
         print("Exclude response value...")
@@ -300,7 +326,7 @@ class Dataset():
         all_experiment.reset_index(drop=True, inplace=True)
 
         # Update celline_barcode after exclusion
-        self.celline_barcode = list(set(all_experiment['CELL_LINE_NAME']).intersection(self.celline_barcode))
+        self.celline_barcode = list(set(all_experiment['CELLINE_BARCODE']).intersection(self.celline_barcode))
         print("Experiment Done!")
 
         return all_experiment
@@ -329,7 +355,7 @@ class Dataset():
 
     def get_celline_barcode(self):
         slist = []
-        s1 = set(self.experiment['CELL_LINE_NAME'])
+        s1 = set(self.experiment['CELLINE_BARCODE'])
         # slist.append(set(filtered_celline['Sample Name']) )
         if "gene_expression" in self.feature_contained:
             slist.append(set(self.fpkm.index))

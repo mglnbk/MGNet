@@ -4,8 +4,8 @@ library(ALL)
 library(ConsensusClusterPlus)
 
 # readin
-encoded_df <- read_csv('ccl_encoded.csv')
-drug_encoded_df <- read_csv('drug_encoded.csv')
+encoded_df <- read_csv('result/ccl_encoded.csv')
+drug_encoded_df <- read_csv('result/drug_encoded.csv')
 mofa_df <- read_csv('data/processed_data/simlilarity_matrix.csv')
 
 # Different from python, col is sample, rows are features
@@ -14,7 +14,7 @@ colnames(mofa_df) <- colnames(encoded_df)
 mofa_df <- as.matrix(mofa_df)
 encoded_df <- as.matrix(encoded_df)
 drug_encoded_df <- as.matrix(drug_encoded_df)
-
+encoded_df
 
 drug_results <- ConsensusClusterPlus(drug_encoded_df, maxK = 10, reps = 50,
                                 pItem = 0.8, pFeature = 1,
